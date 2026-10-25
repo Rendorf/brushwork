@@ -44,6 +44,17 @@ A free, offline painting app in the spirit of ibis Paint. It runs in the browser
 - **Reference window:** floating, movable and resizable. It shows your reference pictures (stored on the device) or a live view of the canvas, with pinch/scroll zoom and color picking.
 - **Custom brushes:** make a brush from any image, duplicate and tweak brushes, rename/delete, choose any tip shape, export/import `.bwbrush` files, and import Photoshop `.abr` brushes.
 
+## Phase 3: filters
+
+44 GPU filters with live preview on the active layer. Every filter can be limited by a selection, faded with an effect-amount slider, respects alpha lock, and applies as one undo step. Your last settings for each filter are remembered, and recent filters are listed first. Open them from the tool grid, Menu → Filters, or the F key; Enter applies and Esc cancels.
+
+- **Adjust:** brightness/contrast, hue/saturation/lightness (with colorize), color balance, levels, tone curve (per channel), gradient map, replace color, temperature/tint, invert, grayscale, sepia, posterize, threshold.
+- **Blur:** gaussian, motion, radial (spin), zoom, lens (bokeh), sharpen.
+- **Light & shadow:** glow (bloom), outer glow, drop shadow, outline, emboss, vignette.
+- **Artistic:** extract line art (from photos or paintings), halftone (dots, lines or squares, mono or colored), mosaic, noise, chromatic aberration, painting (smoothing), anime-style background, frosted glass.
+- **Distort:** wave, swirl, ripple, bulge/pinch. Filters with a center point let you tap the canvas to place it.
+- **Generate:** clouds, stripes, polka dots, checkerboard, grid lines, and manga speed lines (focus and parallel).
+
 ## Run it
 
 ```bash
@@ -86,13 +97,6 @@ src/ui/             React interface
 
 ## Roadmap
 
-- **Phase 3, filters:**
-  - **Color adjustments:** HSL, levels, curves, gradient map, posterize.
-  - **Blur and light effects:** blurs, sharpen, glow, drop shadow, outline.
-  - **Photo effects:** line extraction, anime-style background from a photo.
-  - **Texture effects:** halftone, mosaic, noise, chromatic aberration.
-  - **Distortions:** wave, swirl, ripple, bulge.
-  - **Pattern generators.**
 - **Phase 4, text and comics:** text layers (horizontal or vertical, open-license fonts, imported fonts), speech balloons, a comic frame divider, screentones, materials, and manga page templates.
 - **Phase 5, time-lapse and extras:** record and export painting videos, and frame animation with onion skin.
 

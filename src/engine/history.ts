@@ -101,6 +101,7 @@ export class History {
   budgetBytes = 512 * 1024 * 1024;
   maxSteps = 200;
   onChange: () => void = () => {};
+  beforeUndoRedo: () => void = () => {};
 
   private collecting: HistoryEntry[] | null = null;
 
@@ -131,6 +132,7 @@ export class History {
   }
 
   undo(): boolean {
+    if (this.done.length) this.beforeUndoRedo();
     const e = this.done.pop();
     if (!e) return false;
     e.undo();
@@ -140,6 +142,7 @@ export class History {
   }
 
   redo(): boolean {
+    if (this.undone.length) this.beforeUndoRedo();
     const e = this.undone.pop();
     if (!e) return false;
     e.redo();

@@ -1382,3 +1382,68 @@ kbd {
   gap: 6px;
   margin: 6px 0 2px;
 }
+
+/* ------------------------------------------------------------------ phase 3 */
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.filter-item {
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  text-align: left;
+  font-size: 13px;
+}
+.filter-item:hover {
+  border-color: var(--accent);
+}
+.filter-dialog {
+  width: min(360px, calc(100vw - 16px));
+}
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.color-param {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.error-text {
+  color: var(--danger);
+  font-size: 12px;
+}
+.curves {
+  margin: 8px 0;
+}
+.curves-box {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1;
+  margin: 8px auto 0;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  touch-action: none;
+  cursor: crosshair;
+}
+.curves-grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.curves-ref {
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+.gradient-param .gradient-bar {
+  width: 100%;
+  margin: 6px 0;
+}

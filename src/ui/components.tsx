@@ -65,6 +65,7 @@ const ICONS: Record<string, string> = {
   reference: 'M3 7h12v12H3z M7 3h14v12h-2 M3 16l4-4 3 3 2-2 3 3',
   distort: 'M5 5l14 2.5-2.5 12L4 16.5z',
   mesh: 'M4 4h16v16H4z M4 12c5.3-2.5 10.7 2.5 16 0 M12 4c-2.5 5.3 2.5 10.7 0 16',
+  filter: 'M12 3l2.2 5.5L20 9l-4.4 3.9L17 19l-5-3.2L7 19l1.4-6.1L4 9l5.8-.5z M12 8v5',
   brushPlus: 'M4 20l4-1 9-9a2.1 2.1 0 00-3-3L5 16l-1 4z M17 15v6 M14 18h6',
 };
 

@@ -8,7 +8,7 @@ import { Icon, IconButton, Segmented, Slider, Toggle } from './components';
 import { GradientBar, GradientEditor } from './GradientEditor';
 import { useEditor, useSettings } from './hooks';
 
-export type PanelId = 'tools' | 'brush' | 'color' | 'layers' | 'menu' | 'settings' | null;
+export type PanelId = 'tools' | 'brush' | 'color' | 'layers' | 'menu' | 'settings' | 'filters' | null;
 
 export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }[] = [
   { id: 'brush', label: 'Brush', icon: 'brush', key: 'B' },
@@ -26,7 +26,7 @@ export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }
   { id: 'hand', label: 'Hand', icon: 'hand', key: 'H' },
 ];
 
-export function ToolGrid({ onPick }: { onPick: () => void }) {
+export function ToolGrid({ onPick, onFilters }: { onPick: () => void; onFilters: () => void }) {
   const ed = useEditor();
   const tool = useSettings((s) => s.tool);
   return (
@@ -45,6 +45,11 @@ export function ToolGrid({ onPick }: { onPick: () => void }) {
           <kbd>{t.key}</kbd>
         </button>
       ))}
+      <button className="tool-item" onClick={onFilters}>
+        <Icon name="filter" size={26} />
+        <span>Filters</span>
+        <kbd>F</kbd>
+      </button>
     </div>
   );
 }

@@ -25,7 +25,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onHelp: () => void }) {
+export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onFilters: () => void; onHelp: () => void }) {
   const ed = useEditor();
   const [dialog, setDialog] = useState<'canvas' | 'image' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -75,6 +75,9 @@ export function MainMenu(props: { onClose: () => void; onSave: () => void; onSet
         <MenuItem icon="download" label="Export JPEG" onClick={run(async () => deliverFile(await exportImage(ed, 'jpeg', false), `${base}.jpg`))} />
         <MenuItem icon="download" label="Export PSD (layers)" onClick={run(async () => deliverFile(await exportPsd(ed), `${base}.psd`))} />
         <MenuItem icon="download" label="Export project (.brushwork)" onClick={run(async () => deliverFile(await writeProject(ed.doc), `${base}.brushwork`))} />
+      </Group>
+      <Group title="Filters">
+        <MenuItem icon="filter" label="Filters…" hint="F" onClick={props.onFilters} />
       </Group>
       <Group title="Edit">
         <MenuItem icon="copy" label="Copy" hint="Ctrl C" onClick={run(() => ed.copy())} />
@@ -247,6 +250,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
     ['B / E / J / K', 'Brush / Eraser / Smudge / Blur'],
     ['G / L / M / V / I / H', 'Fill / Lasso fill / Select / Transform / Eyedropper / Hand'],
     ['U / D / R', 'Shape / Gradient / Ruler & symmetry'],
+    ['F', 'Filters (Enter applies, Esc cancels)'],
     ['Shift while dragging', 'Square shapes, 15° lines, 45° gradients, snap rotation'],
     ['[ and ]', 'Brush size'],
     ['Ctrl Z / Ctrl ⇧ Z', 'Undo / Redo'],

@@ -30,6 +30,7 @@ export class InputController {
   private tap: { t0: number; max: number; moved: boolean } | null = null;
   private longPress = 0;
   private picking = false;
+  private filterDrag = false;
   private lastPressure = 1;
   private penSeen = false;
   private rect: DOMRect;
@@ -154,6 +155,13 @@ export class InputController {
     this.drawId = e.pointerId;
     this.picking = false;
     const p = this.tp(e, true);
+    if (this.ed.filter) {
+      // While a filter is open, taps place its center point instead of drawing.
+      this.filterDrag = true;
+      this.ed.filter.pointer(p.x, p.y);
+      return;
+    }
+    this.filterDrag = false;
     this.lastPressure = p.pressure;
     this.ed.setHover(null);
     this.ed.tool.down(p);
@@ -233,6 +241,11 @@ export class InputController {
         this.pickAt(x, y);
         return;
       }
+      if (this.filterDrag) {
+        const d = this.ed.viewport.toDoc(x, y);
+        this.ed.filter?.pointer(d.x, d.y);
+        return;
+      }
       const list = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
       const events = (list.length ? list : [e]).map((ev) => this.tp(ev));
       this.lastPressure = events[events.length - 1].pressure;
@@ -249,6 +262,8 @@ export class InputController {
         this.picking = false;
         pickOverlay = null;
         this.ed.requestRender();
+      } else if (this.filterDrag) {
+        this.filterDrag = false;
       } else {
         const p = this.tp(e);
         p.pressure = this.lastPressure;

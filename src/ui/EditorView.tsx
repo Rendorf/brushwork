@@ -16,6 +16,7 @@ import { EditorContext, useEditor, useSettings } from './hooks';
 import { LayerPanel } from './LayerPanel';
 import { HelpDialog, MainMenu, SettingsPanel } from './Menus';
 import { ReferenceWindow } from './ReferenceWindow';
+import { FilterDialog, FilterList } from './FilterPanels';
 
 export type OpenRequest =
   | { kind: 'open'; id: string }
@@ -195,14 +196,16 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
       <SideSliders left={!leftHanded} />
       {panel === 'tools' && (
         <Panel title="Tools" onClose={() => setPanel(null)} className="tools-panel">
-          <ToolGrid onPick={() => setPanel(null)} />
+          <ToolGrid onPick={() => setPanel(null)} onFilters={() => setPanel('filters')} />
         </Panel>
       )}
       {panel === 'brush' && <BrushPanel onClose={() => setPanel(null)} />}
       {panel === 'color' && <ColorPanel onClose={() => setPanel(null)} />}
       {panel === 'layers' && <LayerPanel onClose={() => setPanel(null)} />}
-      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onHelp={() => { setHelp(true); setPanel(null); }} />}
+      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onFilters={() => setPanel('filters')} onHelp={() => { setHelp(true); setPanel(null); }} />}
       {panel === 'settings' && <SettingsPanel onClose={() => setPanel(null)} />}
+      {panel === 'filters' && <FilterList onClose={() => setPanel(null)} />}
+      {ed.filter && <FilterDialog key={ed.filter.def.id} />}
       {help && <HelpDialog onClose={() => setHelp(false)} />}
       {refOpen && <ReferenceWindow />}
       <BottomBar panel={panel} setPanel={setPanel} />
@@ -256,6 +259,15 @@ function useKeyboard(ed: Editor, save: () => Promise<void>, setHideUI: (f: (v: b
         else if (k === '0') { ed.viewport.fit(); ed.changed(); }
         else return;
         e.preventDefault();
+        return;
+      }
+      if (ed.filter) {
+        if (k === 'enter') (document.querySelector('.filter-actions .btn.primary') as HTMLButtonElement | null)?.click();
+        else if (k === 'escape') ed.filter.cancel();
+        return;
+      }
+      if (k === 'f') {
+        setPanel('filters');
         return;
       }
       const tool = TOOL_LIST.find((x) => x.key.toLowerCase() === k);

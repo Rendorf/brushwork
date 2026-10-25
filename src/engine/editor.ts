@@ -5,6 +5,8 @@ import { Doc, Folder, Layer, Selection, type Node } from './document';
 import { bindDefaultVAO, bindForSetup, createGL, drawFullscreen, gpuBytes, Surface, SurfacePool, type GL } from './gl/gl';
 import { CompoundEntry, History, PixelEntry, type HistoryEntry } from './history';
 import { createPrograms, type Programs } from './shaders/programs';
+import { FilterSession } from './filters/session';
+import type { FilterDef, Values } from './filters/types';
 import type { Guides, P } from './guides';
 import { drawGuides } from './guidesOverlay';
 import { pickOverlay } from './input';
@@ -84,6 +86,8 @@ export class Editor {
       this.dirty = true;
       this.changed();
     };
+    // A filter preview is computed from the current pixels; undo would make it stale.
+    this.history.beforeUndoRedo = () => this.filter?.cancel();
     canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
       this.toast('The GPU context was lost. Your last autosave is safe; reopen the artwork.');
@@ -249,7 +253,8 @@ export class Editor {
     ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawGuides(ctx, this.doc.guides, this.viewport, this.doc.width, this.doc.height);
-    this.tool.overlay?.(ctx);
+    if (this.filter) this.filter.overlay(ctx);
+    else this.tool.overlay?.(ctx);
     if (pickOverlay) drawPickRing(ctx, pickOverlay.x, pickOverlay.y);
     const s = getSettings();
     if (s.showCursor && this.hover && isBrushTool(this.tool.id)) {
@@ -543,7 +548,22 @@ export class Editor {
     return { parent, index: index + 1 };
   }
 
+  /** The filter being previewed, if any. */
+  filter: FilterSession | null = null;
+
+  /** Start previewing a filter on the active layer. */
+  startFilter(def: FilterDef, values: Values): FilterSession | null {
+    this.filter?.cancel();
+    if (this.tool.busy?.()) this.tool.deactivate?.();
+    const layer = this.editableLayer();
+    if (!layer) return null;
+    this.filter = new FilterSession(this, def, values, layer);
+    this.changed();
+    return this.filter;
+  }
+
   setActive(node: Node | null): void {
+    this.filter?.cancel();
     if (this.tool.busy?.()) this.tool.deactivate?.();
     this.doc.active = node;
     this.changed();

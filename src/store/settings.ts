@@ -69,6 +69,9 @@ export interface Settings {
   gradient: { type: GradientType; stops: GradientStop[]; reverse: boolean; opacity: number };
   /** Floating reference window: position (CSS px), what it shows, and which image. */
   refWindow: { open: boolean; x: number; y: number; w: number; h: number; source: 'image' | 'canvas'; current: string | null };
+  /** Last-used values per filter id, and recently used filter ids. */
+  filterValues: Record<string, Record<string, unknown>>;
+  recentFilters: string[];
   /** Brushes the user made or imported. Their tips live in IndexedDB. */
   customBrushes: BrushParams[];
 }
@@ -112,6 +115,8 @@ const DEFAULTS: Settings = {
     opacity: 1,
   },
   refWindow: { open: false, x: 70, y: 110, w: 280, h: 280, source: 'image', current: null },
+  filterValues: {},
+  recentFilters: [],
   customBrushes: [],
 };
 
