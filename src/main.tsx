@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
+import { loadCustomTips } from './engine/brush/customTips';
 import { settingsStore } from './store/settings';
 import { App } from './ui/App';
 import './ui/styles.css';
@@ -10,6 +11,9 @@ if (import.meta.env.DEV) (window as unknown as { __bwSettings: typeof settingsSt
 // Keep iOS from zooming or scrolling the page itself.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
+
+// Custom brush tips live in IndexedDB; load them before anyone paints.
+void loadCustomTips();
 
 let onNeedRefresh: (apply: () => void) => void = () => {};
 let onOfflineReady: () => void = () => {};

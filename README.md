@@ -32,6 +32,18 @@ A free, offline painting app in the spirit of ibis Paint. It runs in the browser
   - Import images, PSD files or project files.
 - **Installable PWA** that works fully offline.
 
+## Phase 2: drawing aids
+
+- **Rulers:** straight, circle, ellipse and radial rulers that strokes snap to. Strokes that start right next to a ruler land on it; otherwise they run parallel or concentric to it.
+- **Perspective guides:** 1-, 2- and 3-point. A stroke picks the vanishing direction closest to how you start moving.
+- **Symmetry:** mirror, kaleidoscope and rotation with 2–24 segments. Works with brush, eraser, smudge and blur.
+- **Grid** with an adjustable size. Ruler and symmetry have quick on/off switches in the top bar, and all guides are saved with the artwork.
+- **Shape tool:** line, rectangle, ellipse, polygon and star, drawn as an outline with the current brush, filled, or both.
+- **Gradient tool:** linear, radial, conic and reflected. A gradient editor offers presets, color stops that can follow the current color, opacity and reverse.
+- **Transform:** besides free transform, **Distort** (move four corners for true perspective) and **Mesh** (2×2 to 5×5 smooth warp). A selection moves with the pixels.
+- **Reference window:** floating, movable and resizable. It shows your reference pictures (stored on the device) or a live view of the canvas, with pinch/scroll zoom and color picking.
+- **Custom brushes:** make a brush from any image, duplicate and tweak brushes, rename/delete, choose any tip shape, export/import `.bwbrush` files, and import Photoshop `.abr` brushes.
+
 ## Run it
 
 ```bash
@@ -74,7 +86,6 @@ src/ui/             React interface
 
 ## Roadmap
 
-- **Phase 2, drawing aids:** rulers (straight, circle/ellipse, radial), symmetry and kaleidoscope, 1/2/3-point perspective rulers, grid, shape tool, gradient tool, distort/perspective/mesh transform, a floating reference window, custom brushes from images and brush import/export.
 - **Phase 3, filters:**
   - **Color adjustments:** HSL, levels, curves, gradient map, posterize.
   - **Blur and light effects:** blurs, sharpen, glow, drop shadow, outline.
@@ -83,6 +94,6 @@ src/ui/             React interface
   - **Distortions:** wave, swirl, ripple, bulge.
   - **Pattern generators.**
 - **Phase 4, text and comics:** text layers (horizontal or vertical, open-license fonts, imported fonts), speech balloons, a comic frame divider, screentones, materials, and manga page templates.
-- **Phase 5, time-lapse and extras:** record and export painting videos, frame animation with onion skin, and Photoshop `.abr` brush import.
+- **Phase 5, time-lapse and extras:** record and export painting videos, and frame animation with onion skin.
 
 ibis Paint's name and its own brush, material and font libraries are not used. Brushwork ships its own presets, generated textures and open-license assets.

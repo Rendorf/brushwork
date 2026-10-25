@@ -1,5 +1,6 @@
 import type { BlendMode, FolderBlendMode } from './blendModes';
 import { Surface, type GL } from './gl/gl';
+import { defaultGuides, type Guides } from './guides';
 import { uid, type Rect } from './util/geom';
 
 export class Layer {
@@ -120,6 +121,7 @@ export class Doc {
   background: Background = { color: [255, 255, 255], transparent: false };
   selection: Selection | null = null;
   name = 'Untitled';
+  guides: Guides = defaultGuides();
 
   constructor(readonly gl: GL, public width: number, public height: number, public dpi = 350) {}
 

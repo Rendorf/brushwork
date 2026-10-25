@@ -102,7 +102,27 @@ export class History {
   maxSteps = 200;
   onChange: () => void = () => {};
 
+  private collecting: HistoryEntry[] | null = null;
+
+  /** Run fn and record everything it pushes as one undo step. */
+  group(label: string, fn: () => void): void {
+    if (this.collecting) return fn();
+    const parts: HistoryEntry[] = [];
+    this.collecting = parts;
+    try {
+      fn();
+    } finally {
+      this.collecting = null;
+    }
+    if (parts.length === 1) this.push(parts[0]);
+    else if (parts.length > 1) this.push(new CompoundEntry(label, parts));
+  }
+
   push(e: HistoryEntry): void {
+    if (this.collecting) {
+      this.collecting.push(e);
+      return;
+    }
     for (const u of this.undone) u.dispose?.(false);
     this.undone = [];
     this.done.push(e);

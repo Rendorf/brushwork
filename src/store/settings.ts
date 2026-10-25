@@ -14,7 +14,10 @@ export type ToolId =
   | 'select'
   | 'transform'
   | 'eyedropper'
-  | 'hand';
+  | 'hand'
+  | 'ruler'
+  | 'shape'
+  | 'gradient';
 
 export type BrushToolId = 'brush' | 'eraser' | 'smudge' | 'blur';
 
@@ -29,6 +32,15 @@ export interface BrushToolState {
 }
 
 export type FillSource = 'layer' | 'canvas' | 'reference';
+export type ShapeKind = 'line' | 'rect' | 'ellipse' | 'polygon' | 'star';
+export type GradientType = 'linear' | 'radial' | 'conic' | 'reflected';
+
+/** A gradient color stop. color 'fg' means the current color. */
+export interface GradientStop {
+  t: number;
+  color: string;
+  a: number;
+}
 export type SelectShape = 'rect' | 'ellipse' | 'lasso' | 'wand';
 export type SelectOp = 'replace' | 'add' | 'subtract' | 'intersect';
 
@@ -53,6 +65,12 @@ export interface Settings {
   showCursor: boolean;
   undoBudgetMB: number;
   transformKeepAspect: boolean;
+  shape: { kind: ShapeKind; sides: number; mode: 'stroke' | 'fill' | 'both'; fromCenter: boolean };
+  gradient: { type: GradientType; stops: GradientStop[]; reverse: boolean; opacity: number };
+  /** Floating reference window: position (CSS px), what it shows, and which image. */
+  refWindow: { open: boolean; x: number; y: number; w: number; h: number; source: 'image' | 'canvas'; current: string | null };
+  /** Brushes the user made or imported. Their tips live in IndexedDB. */
+  customBrushes: BrushParams[];
 }
 
 const DEFAULTS: Settings = {
@@ -83,6 +101,18 @@ const DEFAULTS: Settings = {
   showCursor: true,
   undoBudgetMB: 512,
   transformKeepAspect: true,
+  shape: { kind: 'rect', sides: 6, mode: 'stroke', fromCenter: false },
+  gradient: {
+    type: 'linear',
+    stops: [
+      { t: 0, color: 'fg', a: 1 },
+      { t: 1, color: 'fg', a: 0 },
+    ],
+    reverse: false,
+    opacity: 1,
+  },
+  refWindow: { open: false, x: 70, y: 110, w: 280, h: 280, source: 'image', current: null },
+  customBrushes: [],
 };
 
 export const settingsStore = createStore<Settings>()(
@@ -98,6 +128,9 @@ export const settingsStore = createStore<Settings>()(
         brushTools: { ...current.brushTools, ...(p.brushTools ?? {}) },
         fill: { ...current.fill, ...(p.fill ?? {}) },
         select: { ...current.select, ...(p.select ?? {}) },
+        shape: { ...current.shape, ...(p.shape ?? {}) },
+        gradient: { ...current.gradient, ...(p.gradient ?? {}) },
+        refWindow: { ...current.refWindow, ...(p.refWindow ?? {}) },
       };
     },
   }),

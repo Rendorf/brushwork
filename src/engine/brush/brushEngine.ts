@@ -3,6 +3,8 @@ import type { Programs } from '../shaders/programs';
 import { intersect, union, type Rect } from '../util/geom';
 import type { BrushParams } from './presets';
 import type { Dab } from './stroke';
+import { customTip, isCustomTip } from './customTips';
+import type { TipRef } from './presets';
 import { makeGrain, makeTip, type GrainId, type TipId } from './tips';
 
 const FLOATS = 9;
@@ -15,7 +17,7 @@ export interface SmudgeState {
 
 /** GPU side of the brush: instanced dab stamping plus direct smudge/blur dabs. */
 export class BrushEngine {
-  private tips = new Map<TipId, Surface>();
+  private tips = new Map<TipRef, Surface>();
   private grains = new Map<GrainId, Surface>();
   private vao: WebGLVertexArrayObject;
   private vbo: WebGLBuffer;
@@ -43,10 +45,10 @@ export class BrushEngine {
     this.blank.upload(0, 0, 1, 1, new Uint8Array([255]));
   }
 
-  tip(id: TipId): Surface {
+  tip(id: TipRef): Surface {
     let s = this.tips.get(id);
     if (!s) {
-      const m = makeTip(id);
+      const m = (isCustomTip(id) ? customTip(id) : null) ?? makeTip(isCustomTip(id) ? 'round' : (id as TipId));
       s = new Surface(this.gl, m.w, m.h, 'r8', 'linear');
       s.upload(0, 0, m.w, m.h, m.data);
       this.tips.set(id, s);

@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { hsvToRgb } from '../engine/brush/stroke';
-import { getPreset } from '../engine/brush/presets';
+import { getBrush } from '../engine/brush/library';
+import { makeRuler, type Ruler, type SymmetryKind } from '../engine/guides';
 import type { TransformTool } from '../engine/tools/transformTool';
-import { isBrushTool, setSettings, updateBrushTool, type ToolId } from '../store/settings';
+import { isBrushTool, setSettings, updateBrushTool, type GradientType, type ShapeKind, type ToolId } from '../store/settings';
 import { Icon, IconButton, Segmented, Slider, Toggle } from './components';
+import { GradientBar, GradientEditor } from './GradientEditor';
 import { useEditor, useSettings } from './hooks';
 
 export type PanelId = 'tools' | 'brush' | 'color' | 'layers' | 'menu' | 'settings' | null;
@@ -16,6 +19,9 @@ export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }
   { id: 'lassoFill', label: 'Lasso Fill', icon: 'lassoFill', key: 'L' },
   { id: 'select', label: 'Selection', icon: 'select', key: 'M' },
   { id: 'transform', label: 'Transform', icon: 'transform', key: 'V' },
+  { id: 'shape', label: 'Shape', icon: 'shape', key: 'U' },
+  { id: 'gradient', label: 'Gradient', icon: 'gradient', key: 'D' },
+  { id: 'ruler', label: 'Ruler & Symmetry', icon: 'ruler', key: 'R' },
   { id: 'eyedropper', label: 'Eyedropper', icon: 'eyedropper', key: 'I' },
   { id: 'hand', label: 'Hand', icon: 'hand', key: 'H' },
 ];
@@ -56,7 +62,7 @@ export function BottomBar({ panel, setPanel }: { panel: PanelId; setPanel: (p: P
       <IconButton icon={t.icon} label={`Tool: ${t.label}`} active={panel === 'tools'} onClick={() => toggle('tools')} />
       <button className={`brush-btn ${panel === 'brush' ? 'active' : ''}`} onClick={() => toggle('brush')} title="Brush settings">
         <span className="brush-size">{Math.round(ts.size)}</span>
-        <span className="brush-name">{getPreset(ts.presetId).name}</span>
+        <span className="brush-name">{getBrush(ts.presetId).name}</span>
       </button>
       <IconButton icon="undo" label="Undo" disabled={!ed.history.canUndo} onClick={() => ed.history.undo()} />
       <IconButton icon="redo" label="Redo" disabled={!ed.history.canRedo} onClick={() => ed.history.redo()} />
@@ -83,8 +89,85 @@ export function SideSliders({ left }: { left: boolean }) {
   );
 }
 
+type RulerChoice = 'none' | 'line' | 'circle' | 'ellipse' | 'radial' | 'p1' | 'p2' | 'p3';
+
+function rulerChoice(r: Ruler | null): RulerChoice {
+  if (!r) return 'none';
+  if (r.kind === 'ellipse') return r.circle ? 'circle' : 'ellipse';
+  if (r.kind === 'perspective') return `p${r.vps.length}` as RulerChoice;
+  return r.kind;
+}
+
+/** Ruler, symmetry and grid options. */
+function GuideOptions() {
+  const ed = useEditor();
+  const g = ed.doc.guides;
+  const v = ed.viewport;
+  const center = () => v.toDoc(v.cssW / 2, v.cssH / 2);
+  const size = () => (Math.min(v.cssW, v.cssH) * 0.28) / v.zoom;
+  const pickRuler = (c: RulerChoice) => {
+    let r: Ruler | null = null;
+    if (c === 'line' || c === 'radial') r = makeRuler(c, center(), size());
+    else if (c === 'circle' || c === 'ellipse') {
+      const e = makeRuler('ellipse', center(), size()) as Extract<Ruler, { kind: 'ellipse' }>;
+      r = c === 'circle' ? { ...e, ry: e.rx, circle: true } : e;
+    } else if (c !== 'none') r = makeRuler('perspective', center(), size(), Number(c.slice(1)));
+    ed.setGuides({ ruler: r, rulerOn: true });
+  };
+  const pickSym = (k: SymmetryKind | 'none') =>
+    ed.setGuides({ symmetry: k === 'none' ? null : { kind: k, c: center(), angle: k === 'mirror' ? Math.PI / 2 : -Math.PI / 2, n: g.symmetry?.n ?? 6 }, symmetryOn: true });
+  return (
+    <>
+      <Segmented
+        value={rulerChoice(g.ruler)}
+        onChange={pickRuler}
+        options={[
+          { value: 'none', label: 'No ruler' },
+          { value: 'line', label: 'Straight' },
+          { value: 'circle', label: 'Circle' },
+          { value: 'ellipse', label: 'Ellipse' },
+          { value: 'radial', label: 'Radial' },
+          { value: 'p1', label: '1-point' },
+          { value: 'p2', label: '2-point' },
+          { value: 'p3', label: '3-point' },
+        ]}
+      />
+      <Segmented
+        value={g.symmetry?.kind ?? 'none'}
+        onChange={pickSym}
+        options={[
+          { value: 'none', label: 'No symmetry' },
+          { value: 'mirror', label: 'Mirror' },
+          { value: 'kaleidoscope', label: 'Kaleidoscope' },
+          { value: 'rotation', label: 'Rotation' },
+        ]}
+      />
+      {g.symmetry && g.symmetry.kind !== 'mirror' && (
+        <Slider label="Segments" value={g.symmetry.n} min={2} max={24} step={1} onChange={(n) => ed.setGuides({ symmetry: { ...g.symmetry!, n } })} className="compact" />
+      )}
+      <Toggle label="Grid" value={g.gridOn} onChange={(gridOn) => ed.setGuides({ gridOn })} />
+      {g.gridOn && <Slider label="Grid size" value={g.gridSize} min={8} max={1000} step={1} log onChange={(gridSize) => ed.setGuides({ gridSize })} className="compact" />}
+    </>
+  );
+}
+
+/** Quick on/off switches for rulers and symmetry, shown while drawing. */
+export function GuideToggles() {
+  const ed = useEditor();
+  const g = ed.doc.guides;
+  return (
+    <>
+      {g.ruler && <IconButton icon="ruler" label={g.rulerOn ? 'Ruler on' : 'Ruler off'} active={g.rulerOn} onClick={() => ed.setGuides({ rulerOn: !g.rulerOn })} />}
+      {g.symmetry && <IconButton icon="symmetry" label={g.symmetryOn ? 'Symmetry on' : 'Symmetry off'} active={g.symmetryOn} onClick={() => ed.setGuides({ symmetryOn: !g.symmetryOn })} />}
+    </>
+  );
+}
+
 /** Options strip for the active tool. */
 export function ToolOptions() {
+  const [editGradient, setEditGradient] = useState(false);
+  const shape = useSettings((s) => s.shape);
+  const gradient = useSettings((s) => s.gradient);
   const ed = useEditor();
   const tool = useSettings((s) => s.tool);
   const fill = useSettings((s) => s.fill);
@@ -174,18 +257,85 @@ export function ToolOptions() {
       </>
     );
   } else if (tool === 'transform') {
+    const mode = tt.mode;
     body = (
       <>
+        <Segmented
+          value={mode}
+          onChange={(m) => tt.setMode(m)}
+          options={[
+            { value: 'free', label: 'Free', icon: 'transform' },
+            { value: 'distort', label: 'Distort', icon: 'distort' },
+            { value: 'mesh', label: 'Mesh', icon: 'mesh' },
+          ]}
+        />
+        {mode === 'mesh' && (
+          <Segmented
+            value={String(tt.meshSize)}
+            onChange={(v) => tt.setMode('mesh', Number(v))}
+            options={['2', '3', '4', '5'].map((n) => ({ value: n, label: `${n}×${n}` }))}
+          />
+        )}
         <IconButton icon="flipH" label="Flip horizontal" onClick={() => tt.flip('h')} size={20} />
         <IconButton icon="flipV" label="Flip vertical" onClick={() => tt.flip('v')} size={20} />
         <IconButton icon="rotate" label="Rotate 90°" onClick={() => tt.rotate90()} size={20} />
-        <IconButton icon="fit" label="Fit to canvas" onClick={() => tt.fitCanvas()} size={20} />
-        <Toggle label="Keep ratio" value={keepAspect} onChange={(v) => setSettings({ transformKeepAspect: v })} />
+        {mode === 'free' && <IconButton icon="fit" label="Fit to canvas" onClick={() => tt.fitCanvas()} size={20} />}
+        {mode === 'free' && <Toggle label="Keep ratio" value={keepAspect} onChange={(v) => setSettings({ transformKeepAspect: v })} />}
         <button className="chip" onClick={() => tt.reset()}>Reset</button>
         <button className="chip" onClick={() => tt.finish(false)}>Cancel</button>
         <button className="chip primary" onClick={() => tt.finish(true)}>
           <Icon name="check" size={16} /> Done
         </button>
+      </>
+    );
+  } else if (tool === 'ruler') {
+    body = <GuideOptions />;
+  } else if (tool === 'shape') {
+    body = (
+      <>
+        <Segmented
+          value={shape.kind}
+          onChange={(kind: ShapeKind) => setSettings({ shape: { ...shape, kind } })}
+          options={[
+            { value: 'line', label: 'Line' },
+            { value: 'rect', label: 'Rectangle' },
+            { value: 'ellipse', label: 'Ellipse' },
+            { value: 'polygon', label: 'Polygon' },
+            { value: 'star', label: 'Star' },
+          ]}
+        />
+        {(shape.kind === 'polygon' || shape.kind === 'star') && (
+          <Slider label={shape.kind === 'star' ? 'Points' : 'Sides'} value={shape.sides} min={3} max={16} step={1} onChange={(sides) => setSettings({ shape: { ...shape, sides } })} className="compact" />
+        )}
+        {shape.kind !== 'line' && (
+          <Segmented
+            value={shape.mode}
+            onChange={(mode) => setSettings({ shape: { ...shape, mode } })}
+            options={[
+              { value: 'stroke', label: 'Outline' },
+              { value: 'fill', label: 'Fill' },
+              { value: 'both', label: 'Both' },
+            ]}
+          />
+        )}
+        <Toggle label="From center" value={shape.fromCenter} onChange={(fromCenter) => setSettings({ shape: { ...shape, fromCenter } })} />
+      </>
+    );
+  } else if (tool === 'gradient') {
+    body = (
+      <>
+        <Segmented
+          value={gradient.type}
+          onChange={(type: GradientType) => setSettings({ gradient: { ...gradient, type } })}
+          options={[
+            { value: 'linear', label: 'Linear' },
+            { value: 'radial', label: 'Radial' },
+            { value: 'conic', label: 'Conic' },
+            { value: 'reflected', label: 'Reflected' },
+          ]}
+        />
+        <GradientBar stops={gradient.stops} reverse={gradient.reverse} onClick={() => setEditGradient(true)} />
+        <Slider label="Opacity" value={gradient.opacity * 100} min={1} max={100} step={1} format={(v) => `${Math.round(v)}%`} onChange={(v) => setSettings({ gradient: { ...gradient, opacity: v / 100 } })} className="compact" />
       </>
     );
   } else if (tool === 'eyedropper') {
@@ -208,5 +358,10 @@ export function ToolOptions() {
       </>
     );
   }
-  return <div className="tool-options">{body}</div>;
+  return (
+    <>
+      <div className="tool-options">{body}</div>
+      {editGradient && <GradientEditor onClose={() => setEditGradient(false)} />}
+    </>
+  );
 }

@@ -2,14 +2,17 @@ import type { BlendMode } from '../blendModes';
 import type { GrainId, TipId } from './tips';
 
 export type BrushMode = 'paint' | 'smudge' | 'blur';
-export type BrushCategory = 'Pens' | 'Pencils' | 'Airbrush' | 'Paint' | 'Blend' | 'Effects' | 'Erasers';
+export type BrushCategory = 'Pens' | 'Pencils' | 'Airbrush' | 'Paint' | 'Blend' | 'Effects' | 'Erasers' | 'Custom';
+
+/** A built-in tip or a custom one stored on the device. */
+export type TipRef = TipId | `custom:${string}`;
 
 export interface BrushParams {
   id: string;
   name: string;
   category: BrushCategory;
   mode: BrushMode;
-  tip: TipId;
+  tip: TipRef;
   /** Default diameter in document pixels. */
   size: number;
   /** Stroke opacity cap, 0..1. */
@@ -150,4 +153,4 @@ export function getPreset(id: string): BrushParams {
   return PRESET_MAP.get(id) ?? PRESETS[1];
 }
 
-export const CATEGORIES: BrushCategory[] = ['Pens', 'Pencils', 'Airbrush', 'Paint', 'Blend', 'Effects', 'Erasers'];
+export const CATEGORIES: BrushCategory[] = ['Pens', 'Pencils', 'Airbrush', 'Paint', 'Blend', 'Effects', 'Erasers', 'Custom'];

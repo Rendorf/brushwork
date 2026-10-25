@@ -274,6 +274,57 @@ void main() {
   o = vec4(v_color * a, a);
 }`;
 
+// Gradient fill into the stroke buffer, from a 256x1 premultiplied color lookup table.
+const GRADIENT_FS = /* glsl */ `
+uniform sampler2D u_lut; uniform vec2 u_a; uniform vec2 u_b; uniform int u_type;
+out vec4 o;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+void main() {
+  vec2 p = gl_FragCoord.xy;
+  vec2 d = u_b - u_a;
+  float L2 = max(dot(d, d), 1e-6);
+  float t;
+  if (u_type == 0) t = dot(p - u_a, d) / L2;
+  else if (u_type == 1) t = length(p - u_a) / sqrt(L2);
+  else if (u_type == 2) t = fract((atan(p.y - u_a.y, p.x - u_a.x) - atan(d.y, d.x)) / 6.2831853);
+  else t = abs(dot(p - u_a, d) / L2);
+  t = clamp(t, 0.0, 1.0);
+  vec4 c = texture(u_lut, vec2(t * (255.0 / 256.0) + 0.5 / 256.0, 0.5));
+  // Dither against 8-bit banding.
+  float n = (hash(p) - 0.5) / 255.0;
+  if (c.a > 0.0 && c.a < 1.0) c.a = clamp(c.a + n, 0.0, 1.0);
+  c.rgb = min(clamp(c.rgb + n * c.a, 0.0, 1.0), vec3(c.a));
+  o = c;
+}`;
+
+// Perspective (4-corner) warp: inverse homography from document pixels to texture uv.
+const PROJ_FS = /* glsl */ `
+uniform sampler2D u_src; uniform mat3 u_inv; uniform vec2 u_shift; uniform float u_opacity;
+out vec4 o;
+void main() {
+  vec3 q = u_inv * vec3(gl_FragCoord.xy + u_shift, 1.0);
+  if (q.z <= 1e-6) { o = vec4(0.0); return; }
+  vec2 uv = q.xy / q.z;
+  if (uv.x < -0.01 || uv.y < -0.01 || uv.x > 1.01 || uv.y > 1.01) { o = vec4(0.0); return; }
+  o = texture(u_src, uv) * u_opacity;
+}`;
+
+// Mesh warp: textured triangles with per-vertex uv.
+const MESH_VS = /* glsl */ `
+layout(location = 0) in vec2 a_pos;
+layout(location = 1) in vec2 a_uv;
+uniform vec2 u_origin; uniform vec2 u_size;
+out vec2 v_uv;
+void main() {
+  gl_Position = vec4((a_pos - u_origin) / u_size * 2.0 - 1.0, 0.0, 1.0);
+  v_uv = a_uv;
+}`;
+const MESH_FS = /* glsl */ `
+uniform sampler2D u_src; uniform float u_opacity;
+in vec2 v_uv;
+out vec4 o;
+void main() { o = texture(u_src, v_uv) * u_opacity; }`;
+
 export interface Programs {
   composite: Program;
   merge: Program;
@@ -285,6 +336,9 @@ export interface Programs {
   smudgeMix: Program;
   smudgeApply: Program;
   blurApply: Program;
+  gradient: Program;
+  proj: Program;
+  mesh: Program;
 }
 
 export function createPrograms(gl: GL): Programs {
@@ -299,5 +353,8 @@ export function createPrograms(gl: GL): Programs {
     smudgeMix: new Program(gl, FULLSCREEN_VS, SMUDGE_MIX_FS, 'smudgeMix'),
     smudgeApply: new Program(gl, FULLSCREEN_VS, SMUDGE_APPLY_FS, 'smudgeApply'),
     blurApply: new Program(gl, FULLSCREEN_VS, BLUR_APPLY_FS, 'blurApply'),
+    gradient: new Program(gl, FULLSCREEN_VS, GRADIENT_FS, 'gradient'),
+    proj: new Program(gl, FULLSCREEN_VS, PROJ_FS, 'proj'),
+    mesh: new Program(gl, MESH_VS, MESH_FS, 'mesh'),
   };
 }

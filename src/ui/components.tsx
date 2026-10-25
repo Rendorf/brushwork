@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+/** setPointerCapture throws for pointers the browser no longer tracks; never let that abort a handler. */
+export function capture(el: Element | null | undefined, pointerId: number): void {
+  try {
+    el?.setPointerCapture(pointerId);
+  } catch {
+    /* pointer already released */
+  }
+}
+
 const ICONS: Record<string, string> = {
   brush: 'M4 20l4-1 11-11a2.1 2.1 0 00-3-3L5 16l-1 4z M14 7l3 3',
   eraser: 'M9 20h11 M5.4 13.6l7.3-7.3a2 2 0 012.8 0l2.2 2.2a2 2 0 010 2.8L10 19H8l-2.6-2.6a2 2 0 010-2.8z M9 10l5 5',
@@ -48,6 +57,15 @@ const ICONS: Record<string, string> = {
   lasso: 'M12 4c4.4 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3.6-5 8-5z M7 13c-1.2 1.6-1.2 3.4 0 4.4s3.3-.2 3.3 2.1',
   invert: 'M12 3a9 9 0 100 18z M12 3a9 9 0 010 18',
   share: 'M12 15V3 M7.5 7.5L12 3l4.5 4.5 M5 12v8h14v-8',
+  ruler: 'M3 17L17 3l4 4L7 21z M7 13l2 2 M10 10l2 2 M13 7l2 2',
+  symmetry: 'M12 3v18 M9 7C5.5 8 4.5 11 5.3 14S8.5 18 10 18 M15 7c3.5 1 4.5 4 3.7 7s-3.2 4-4.7 4',
+  grid: 'M4 4h16v16H4z M4 9.3h16 M4 14.6h16 M9.3 4v16 M14.6 4v16',
+  shape: 'M3.5 20l6-11 6 11z M14 4h6.5v6.5H14z',
+  gradient: 'M4 4h16v16H4z M7 4v16 M10.5 4v16 M14.5 4v16',
+  reference: 'M3 7h12v12H3z M7 3h14v12h-2 M3 16l4-4 3 3 2-2 3 3',
+  distort: 'M5 5l14 2.5-2.5 12L4 16.5z',
+  mesh: 'M4 4h16v16H4z M4 12c5.3-2.5 10.7 2.5 16 0 M12 4c-2.5 5.3 2.5 10.7 0 16',
+  brushPlus: 'M4 20l4-1 9-9a2.1 2.1 0 00-3-3L5 16l-1 4z M17 15v6 M14 18h6',
 };
 
 export function Icon({ name, size = 22 }: { name: string; size?: number }) {
@@ -134,7 +152,7 @@ export function Slider(props: {
         tabIndex={0}
         onPointerDown={(e) => {
           e.preventDefault();
-          (e.target as Element).setPointerCapture?.(e.pointerId);
+          capture(e.target as Element, e.pointerId);
           dragging.current = true;
           props.onChange(fromT(at(e)));
         }}

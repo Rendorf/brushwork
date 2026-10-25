@@ -2,9 +2,11 @@ import { blendIndex, type FolderBlendMode } from './blendModes';
 import { BrushEngine } from './brush/brushEngine';
 import { Compositor, TILE } from './compositor';
 import { Doc, Folder, Layer, Selection, type Node } from './document';
-import { bindForSetup, createGL, drawFullscreen, gpuBytes, Surface, SurfacePool, type GL } from './gl/gl';
+import { bindDefaultVAO, bindForSetup, createGL, drawFullscreen, gpuBytes, Surface, SurfacePool, type GL } from './gl/gl';
 import { CompoundEntry, History, PixelEntry, type HistoryEntry } from './history';
 import { createPrograms, type Programs } from './shaders/programs';
+import type { Guides, P } from './guides';
+import { drawGuides } from './guidesOverlay';
 import { pickOverlay } from './input';
 import { createTools } from './tools';
 import { drawPickRing } from './tools/simpleTools';
@@ -12,6 +14,7 @@ import type { Tool, ToolPointer } from './tools/tool';
 import { alphaBounds, blurMask, dilate, erode, premultiply } from './util/pixels';
 import { clampToDoc, intersect, toMat3, type Rect } from './util/geom';
 import { Viewport } from './viewport';
+import { invertMat3, mat3ToGL, squareToQuad } from './warp';
 import { getSettings, isBrushTool, settingsStore, type ToolId } from '../store/settings';
 
 export type Corners = [number, number, number, number, number, number, number, number];
@@ -245,6 +248,7 @@ export class Editor {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawGuides(ctx, this.doc.guides, this.viewport, this.doc.width, this.doc.height);
     this.tool.overlay?.(ctx);
     if (pickOverlay) drawPickRing(ctx, pickOverlay.x, pickOverlay.y);
     const s = getSettings();
@@ -421,6 +425,55 @@ export class Editor {
     }
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.disable(gl.BLEND);
+  }
+
+  /** Draw `src` warped onto a perspective quad (TL, TR, BR, BL in doc px), blending over. */
+  drawProjective(target: Surface, src: Surface, quad: P[], vp: Rect, origin: [number, number] = [vp.x, vp.y], opacity = 1): void {
+    const gl = this.gl;
+    const inv = invertMat3(squareToQuad(quad));
+    const p = this.progs.proj.use();
+    target.target(vp.x, vp.y, vp.w, vp.h);
+    p.tex('u_src', 0, src.tex).m3('u_inv', mat3ToGL(inv)).v2('u_shift', origin[0] - vp.x, origin[1] - vp.y).f('u_opacity', opacity);
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    drawFullscreen(gl);
+    gl.disable(gl.BLEND);
+  }
+
+  private meshVao: { vao: WebGLVertexArrayObject; vbo: WebGLBuffer; ibo: WebGLBuffer } | null = null;
+
+  /** Draw `src` through a dense triangle mesh (x, y, u, v per vertex), blending over. */
+  drawMesh(target: Surface, src: Surface, verts: Float32Array, indices: Uint32Array, vp: Rect, origin: [number, number] = [vp.x, vp.y], opacity = 1): void {
+    const gl = this.gl;
+    if (!this.meshVao) {
+      const vao = gl.createVertexArray()!;
+      const vbo = gl.createBuffer()!;
+      const ibo = gl.createBuffer()!;
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+      this.meshVao = { vao, vbo, ibo };
+    }
+    const m = this.meshVao;
+    gl.bindVertexArray(m.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, m.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
+    const p = this.progs.mesh.use();
+    target.target(vp.x, vp.y, vp.w, vp.h);
+    p.tex('u_src', 0, src.tex).v2('u_origin', origin[0], origin[1]).v2('u_size', vp.w, vp.h).f('u_opacity', opacity);
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_INT, 0);
+    gl.disable(gl.BLEND);
+    bindDefaultVAO(gl);
   }
 
   /** Box-filtered downscale of a surface; returns RGBA bytes (premultiplied unless bg given). */
@@ -746,6 +799,14 @@ export class Editor {
     this.strokeBuffer.clear(r.x, r.y, r.w, r.h);
     this.invalidate(r);
     this.history.push(pix);
+  }
+
+  /** Update rulers / symmetry / grid. Guides are saved with the artwork but are not undoable. */
+  setGuides(patch: Partial<Guides>, notify = true): void {
+    Object.assign(this.doc.guides, patch);
+    this.dirty = true;
+    if (notify) this.changed();
+    else this.requestRender();
   }
 
   setBackground(bg: Partial<Doc['background']>): void {

@@ -6,15 +6,16 @@ import { decodeImage, importPsd } from '../engine/io/files';
 import { isProjectFile, readProject } from '../engine/io/serialize';
 import type { TransformTool } from '../engine/tools/transformTool';
 import { premultiply } from '../engine/util/pixels';
-import { getSettings, isBrushTool, updateBrushTool, type ToolId } from '../store/settings';
+import { getSettings, isBrushTool, setSettings, updateBrushTool, type ToolId } from '../store/settings';
 import { loadArtwork, markUnsaved, saveArtwork } from '../storage/gallery';
 import { BrushPanel } from './BrushPanel';
-import { BottomBar, SideSliders, ToolGrid, ToolOptions, TOOL_LIST, type PanelId } from './Chrome';
+import { BottomBar, GuideToggles, SideSliders, ToolGrid, ToolOptions, TOOL_LIST, type PanelId } from './Chrome';
 import { ColorPanel } from './ColorPanel';
 import { IconButton, Panel } from './components';
 import { EditorContext, useEditor, useSettings } from './hooks';
 import { LayerPanel } from './LayerPanel';
 import { HelpDialog, MainMenu, SettingsPanel } from './Menus';
+import { ReferenceWindow } from './ReferenceWindow';
 
 export type OpenRequest =
   | { kind: 'open'; id: string }
@@ -128,6 +129,7 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
   const [hideUI, setHideUI] = useState(false);
   const leftHanded = useSettings((s) => s.leftHanded);
   const tool = useSettings((s) => s.tool);
+  const refOpen = useSettings((s) => s.refWindow.open);
   const saving = useRef<Promise<void> | null>(null);
 
   const save = useCallback(async () => {
@@ -181,6 +183,8 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
         <IconButton icon="back" label="Back to gallery" onClick={exit} />
         <span className="doc-title">{ed.doc.name}</span>
         <span className="spacer" />
+        <GuideToggles />
+        <IconButton icon="reference" label="Reference window" active={refOpen} onClick={() => setSettings((s) => ({ refWindow: { ...s.refWindow, open: !s.refWindow.open } }))} />
         <button className="zoom-btn" onClick={() => { ed.viewport.fit(); ed.requestRender(); ed.changed(); }} title="Fit to screen">
           {zoomPct}%
         </button>
@@ -200,6 +204,7 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
       {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onHelp={() => { setHelp(true); setPanel(null); }} />}
       {panel === 'settings' && <SettingsPanel onClose={() => setPanel(null)} />}
       {help && <HelpDialog onClose={() => setHelp(false)} />}
+      {refOpen && <ReferenceWindow />}
       <BottomBar panel={panel} setPanel={setPanel} />
       <ToolHint tool={tool} />
     </>
@@ -208,8 +213,12 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
 
 /** A short hint for tools whose gesture is not obvious. */
 function ToolHint({ tool }: { tool: ToolId }) {
+  const ed = useEditor();
+  const mode = (ed.tools.transform as TransformTool).mode;
   const hints: Partial<Record<ToolId, string>> = {
-    transform: 'Drag inside to move, corners to scale, outside to rotate.',
+    transform: mode === 'free' ? 'Drag inside to move, corners to scale, outside to rotate.' : 'Drag the points to reshape; drag inside to move.',
+    ruler: 'Drag the handles to place rulers and symmetry.',
+    gradient: 'Drag across the canvas to draw the gradient.',
     lassoFill: 'Draw a closed shape to fill it.',
     fill: 'Tap an area to fill it.',
   };

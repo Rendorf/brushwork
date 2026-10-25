@@ -3,6 +3,9 @@ import type { ToolId } from '../../store/settings';
 import { BrushTool } from './brushTool';
 import { EyedropperTool, FillTool, HandTool, LassoFillTool, SelectTool } from './simpleTools';
 import type { Tool } from './tool';
+import { GradientTool } from './gradientTool';
+import { RulerTool } from './rulerTool';
+import { ShapeTool } from './shapeTool';
 import { TransformTool } from './transformTool';
 
 export function createTools(ed: Editor): Record<ToolId, Tool> {
@@ -17,5 +20,8 @@ export function createTools(ed: Editor): Record<ToolId, Tool> {
     transform: new TransformTool(ed),
     eyedropper: new EyedropperTool(ed),
     hand: new HandTool(ed),
+    ruler: new RulerTool(ed),
+    shape: new ShapeTool(ed),
+    gradient: new GradientTool(ed),
   };
 }

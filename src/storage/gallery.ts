@@ -1,50 +1,13 @@
 // Artworks stored on the device in IndexedDB: metadata, thumbnails, document JSON and
 // one compressed pixel buffer per layer. Only changed layers are rewritten on save.
 // Data is stored as ArrayBuffers, not Blobs: Safari refuses Blobs in IndexedDB in private mode.
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Doc } from '../engine/document';
 import type { Editor } from '../engine/editor';
 import type { GL } from '../engine/gl/gl';
-import { canCompress, docFromJSON, docToJSON, gunzip, gzip, type DocJSON } from '../engine/io/serialize';
+import { canCompress, docFromJSON, docToJSON, gunzip, gzip } from '../engine/io/serialize';
+import { db, type ArtworkMeta, type LayerRecord } from './db';
 
-export interface ArtworkMeta {
-  id: string;
-  name: string;
-  width: number;
-  height: number;
-  dpi: number;
-  created: number;
-  updated: number;
-  layerCount: number;
-}
-
-interface LayerRecord {
-  gz: boolean;
-  data: ArrayBuffer;
-}
-
-interface Schema extends DBSchema {
-  meta: { key: string; value: ArtworkMeta };
-  thumbs: { key: string; value: { type: string; data: ArrayBuffer } };
-  docs: { key: string; value: DocJSON };
-  layers: { key: string; value: LayerRecord };
-}
-
-let dbp: Promise<IDBPDatabase<Schema>> | null = null;
-
-function db(): Promise<IDBPDatabase<Schema>> {
-  if (!dbp) {
-    dbp = openDB<Schema>('brushwork', 1, {
-      upgrade(d) {
-        d.createObjectStore('meta', { keyPath: 'id' });
-        d.createObjectStore('thumbs');
-        d.createObjectStore('docs');
-        d.createObjectStore('layers');
-      },
-    });
-  }
-  return dbp;
-}
+export type { ArtworkMeta };
 
 const layerKey = (art: string, layer: string) => `${art}/${layer}`;
 const layerRange = (art: string) => IDBKeyRange.bound(`${art}/`, `${art}/￿`);

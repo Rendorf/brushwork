@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { hsvToRgb } from '../engine/brush/stroke';
 import { hexToRgb, rgbToHex, setColorRGB, setSettings, settingsStore } from '../store/settings';
-import { Icon, IconButton, Panel, Segmented, Slider } from './components';
+import { capture, Icon, IconButton, Panel, Segmented, Slider } from './components';
 import { useSettings } from './hooks';
 
 const RING = 232;
@@ -46,7 +46,7 @@ function ColorWheel() {
       ref={ref}
       style={{ width: RING, height: RING }}
       onPointerDown={(e) => {
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        capture(e.target as Element, e.pointerId);
         handle(e, true);
       }}
       onPointerMove={(e) => e.buttons && handle(e)}

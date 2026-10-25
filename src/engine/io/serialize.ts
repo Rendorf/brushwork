@@ -2,6 +2,7 @@
 import type { BlendMode, FolderBlendMode } from '../blendModes';
 import { Doc, Folder, Layer, Selection, type Node } from '../document';
 import { Surface, type GL } from '../gl/gl';
+import { defaultGuides, type Guides } from '../guides';
 
 export interface NodeJSON {
   kind: 'layer' | 'folder';
@@ -27,6 +28,7 @@ export interface DocJSON {
   background: Doc['background'];
   activeId: string | null;
   root: NodeJSON[];
+  guides?: Guides;
 }
 
 export function docToJSON(doc: Doc): DocJSON {
@@ -53,6 +55,7 @@ export function docToJSON(doc: Doc): DocJSON {
     background: doc.background,
     activeId: doc.active?.id ?? null,
     root: doc.root.children.map(node),
+    guides: doc.guides,
   };
 }
 
@@ -64,6 +67,7 @@ export async function docFromJSON(gl: GL, j: DocJSON, pixels: (id: string) => Pr
   const doc = new Doc(gl, j.width, j.height, j.dpi);
   doc.name = j.name;
   doc.background = { color: [...j.background.color] as [number, number, number], transparent: j.background.transparent };
+  doc.guides = { ...defaultGuides(), ...(j.guides ?? {}) };
   const build = async (n: NodeJSON, parent: Folder): Promise<void> => {
     let node: Node;
     if (n.kind === 'layer') {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BLEND_MODES, blendLabel, type FolderBlendMode } from '../engine/blendModes';
 import type { Folder, Layer, Node } from '../engine/document';
 import type { Editor } from '../engine/editor';
-import { Icon, IconButton, Panel, Slider } from './components';
+import { capture, Icon, IconButton, Panel, Slider } from './components';
 import { useEditor } from './hooks';
 import { rgbToHex, hexToRgb } from '../store/settings';
 
@@ -150,7 +150,7 @@ export function LayerPanel({ onClose }: { onClose: () => void }) {
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    (e.currentTarget.closest('.layer-list') as HTMLElement).setPointerCapture(e.pointerId);
+                    capture(e.currentTarget.closest('.layer-list'), e.pointerId);
                     setDrag({ node: n, y: e.clientY, target: null });
                   }}
                 >

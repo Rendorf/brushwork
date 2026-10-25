@@ -246,6 +246,8 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
     ['Right-click', 'Pick a color'],
     ['B / E / J / K', 'Brush / Eraser / Smudge / Blur'],
     ['G / L / M / V / I / H', 'Fill / Lasso fill / Select / Transform / Eyedropper / Hand'],
+    ['U / D / R', 'Shape / Gradient / Ruler & symmetry'],
+    ['Shift while dragging', 'Square shapes, 15° lines, 45° gradients, snap rotation'],
     ['[ and ]', 'Brush size'],
     ['Ctrl Z / Ctrl ⇧ Z', 'Undo / Redo'],
     ['Ctrl A / D / ⇧ I', 'Select all / Deselect / Invert'],
