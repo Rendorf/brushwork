@@ -71,6 +71,11 @@ const ICONS: Record<string, string> = {
   frame: 'M3 3h18v18H3z M3 10h18 M12 10v11',
   materials: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z M4 4l7 7 M13 4l7 7 M4 13l7 7 M13 13l7 7',
   tone: 'M4 4h16v16H4z M8 8h.01 M12 8h.01 M16 8h.01 M8 12h.01 M12 12h.01 M16 12h.01 M8 16h.01 M12 16h.01 M16 16h.01',
+  play: 'M7 4.5v15l12-7.5z',
+  pause: 'M7 4h3.5v16H7z M13.5 4H17v16h-3.5z',
+  video: 'M3 6h12v12H3z M15 10l6-3v10l-6-3',
+  film: 'M4 3h16v18H4z M8 3v18 M16 3v18 M4 8h4 M4 13h4 M4 18h4 M16 8h4 M16 13h4 M16 18h4',
+  onion: 'M8 12a5 5 0 1010 0 5 5 0 10-10 0 M6 12a5 5 0 017-4.6 M4 12a5 5 0 016-4.9',
   brushPlus: 'M4 20l4-1 9-9a2.1 2.1 0 00-3-3L5 16l-1 4z M17 15v6 M14 18h6',
 };
 

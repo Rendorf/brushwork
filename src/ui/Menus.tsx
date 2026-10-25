@@ -25,7 +25,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onFilters: () => void; onMaterials: () => void; onHelp: () => void }) {
+export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onFilters: () => void; onMaterials: () => void; onTimelapse: () => void; onAnimExport: () => void; onHelp: () => void }) {
   const ed = useEditor();
   const [dialog, setDialog] = useState<'canvas' | 'image' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -74,7 +74,12 @@ export function MainMenu(props: { onClose: () => void; onSave: () => void; onSet
         <MenuItem icon="download" label="Export transparent PNG" onClick={run(async () => deliverFile(await exportImage(ed, 'png', true), `${base}.png`))} />
         <MenuItem icon="download" label="Export JPEG" onClick={run(async () => deliverFile(await exportImage(ed, 'jpeg', false), `${base}.jpg`))} />
         <MenuItem icon="download" label="Export PSD (layers)" onClick={run(async () => deliverFile(await exportPsd(ed), `${base}.psd`))} />
+        <MenuItem icon="video" label="Time-lapse video…" onClick={props.onTimelapse} />
         <MenuItem icon="download" label="Export project (.brushwork)" onClick={run(async () => deliverFile(await writeProject(ed.doc), `${base}.brushwork`))} />
+      </Group>
+      <Group title="Animation">
+        <MenuItem icon="film" label={ed.doc.animation ? 'Turn off animation' : 'Frame-by-frame animation'} onClick={run(() => ed.setAnimationMode(!ed.doc.animation))} />
+        {ed.doc.animation && <MenuItem icon="download" label="Export GIF / video…" onClick={props.onAnimExport} />}
       </Group>
       <Group title="Filters">
         <MenuItem icon="filter" label="Filters…" hint="F" onClick={props.onFilters} />

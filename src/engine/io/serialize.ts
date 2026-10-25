@@ -2,6 +2,7 @@
 import type { BlendMode, FolderBlendMode } from '../blendModes';
 import { Doc, Folder, Layer, Selection, type Node } from '../document';
 import { Surface, type GL } from '../gl/gl';
+import type { AnimationSettings } from '../animation';
 import type { FrameSet } from '../comics/frames';
 import type { ToneProps } from '../comics/tone';
 import { defaultGuides, type Guides } from '../guides';
@@ -23,6 +24,7 @@ export interface NodeJSON {
   text?: TextProps | null;
   frames?: FrameSet | null;
   tone?: ToneProps | null;
+  hold?: number;
 }
 
 export interface DocJSON {
@@ -35,6 +37,7 @@ export interface DocJSON {
   activeId: string | null;
   root: NodeJSON[];
   guides?: Guides;
+  animation?: AnimationSettings | null;
 }
 
 export function docToJSON(doc: Doc): DocJSON {
@@ -48,6 +51,7 @@ export function docToJSON(doc: Doc): DocJSON {
       blendMode: n.blendMode,
       locked: n.locked,
       clipping: n.clipping,
+      hold: n.hold,
     };
     if (n.kind === 'layer') return { ...base, alphaLock: n.alphaLock, isReference: n.isReference, text: n.text, frames: n.frames, tone: n.tone };
     return { ...base, expanded: n.expanded, children: n.children.map(node) };
@@ -62,6 +66,7 @@ export function docToJSON(doc: Doc): DocJSON {
     activeId: doc.active?.id ?? null,
     root: doc.root.children.map(node),
     guides: doc.guides,
+    animation: doc.animation,
   };
 }
 
@@ -74,6 +79,7 @@ export async function docFromJSON(gl: GL, j: DocJSON, pixels: (id: string) => Pr
   doc.name = j.name;
   doc.background = { color: [...j.background.color] as [number, number, number], transparent: j.background.transparent };
   doc.guides = { ...defaultGuides(), ...(j.guides ?? {}) };
+  doc.animation = j.animation ?? null;
   const build = async (n: NodeJSON, parent: Folder): Promise<void> => {
     let node: Node;
     if (n.kind === 'layer') {
@@ -100,6 +106,7 @@ export async function docFromJSON(gl: GL, j: DocJSON, pixels: (id: string) => Pr
     node.opacity = n.opacity;
     node.locked = n.locked;
     node.clipping = n.clipping;
+    node.hold = n.hold ?? 1;
     doc.insert(node, parent, parent.children.length);
     if (n.kind === 'folder') for (const c of n.children ?? []) await build(c, node as Folder);
   };

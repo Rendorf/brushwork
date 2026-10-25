@@ -101,6 +101,7 @@ export class InputController {
 
   private onDown = (e: PointerEvent) => {
     this.rect = this.el.getBoundingClientRect();
+    if (this.ed.playing) this.ed.stop();
     try {
       this.el.setPointerCapture(e.pointerId);
     } catch {

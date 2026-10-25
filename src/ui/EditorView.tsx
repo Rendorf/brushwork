@@ -19,6 +19,9 @@ import { ReferenceWindow } from './ReferenceWindow';
 import { FilterDialog, FilterList } from './FilterPanels';
 import { MaterialsPanel } from './MaterialsPanel';
 import { TextPanel } from './TextPanel';
+import { TimelapseDialog } from './TimelapseDialog';
+import { AnimationExportDialog, Timeline } from './Timeline';
+import { TimelapseRecorder } from '../storage/timelapse';
 import { applyTemplate, PAGE_TEMPLATES } from '../engine/comics/templates';
 
 export type OpenRequest =
@@ -178,10 +181,21 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
     };
   }, [ed, save]);
 
+  // Time-lapse recording for this artwork.
+  const recorder = useRef<TimelapseRecorder | null>(null);
+  const [timelapseOpen, setTimelapseOpen] = useState(false);
+  const [animExport, setAnimExport] = useState(false);
+  useEffect(() => {
+    const rec = new TimelapseRecorder(ed, id);
+    recorder.current = rec;
+    return () => rec.stop();
+  }, [ed, id]);
+
   const exit = async () => {
     if (ed.tool.busy?.()) (ed.tool as TransformTool).commit?.();
     ed.dirty = true;
     await save();
+    await recorder.current?.flush();
     onExit();
   };
 
@@ -217,7 +231,10 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
       {panel === 'brush' && <BrushPanel onClose={() => setPanel(null)} />}
       {panel === 'color' && <ColorPanel onClose={() => setPanel(null)} />}
       {panel === 'layers' && <LayerPanel onClose={() => setPanel(null)} />}
-      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onFilters={() => setPanel('filters')} onMaterials={() => setPanel('materials')} onHelp={() => { setHelp(true); setPanel(null); }} />}
+      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onFilters={() => setPanel('filters')} onMaterials={() => setPanel('materials')} onTimelapse={() => { setTimelapseOpen(true); setPanel(null); }} onAnimExport={() => { setAnimExport(true); setPanel(null); }} onHelp={() => { setHelp(true); setPanel(null); }} />}
+      {timelapseOpen && <TimelapseDialog art={id} recorder={recorder.current} onClose={() => setTimelapseOpen(false)} />}
+      {ed.doc.animation && <Timeline onExport={() => setAnimExport(true)} />}
+      {animExport && <AnimationExportDialog onClose={() => setAnimExport(false)} />}
       {panel === 'settings' && <SettingsPanel onClose={() => setPanel(null)} />}
       {panel === 'filters' && <FilterList onClose={() => setPanel(null)} />}
       {panel === 'materials' && <MaterialsPanel onClose={() => setPanel(null)} />}

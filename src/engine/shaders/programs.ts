@@ -7,13 +7,16 @@ const COMPOSITE_FS = /* glsl */ `
 ${BLEND_GLSL}
 uniform sampler2D u_dst; uniform ivec2 u_dstOff; uniform bool u_hasDst;
 uniform sampler2D u_src; uniform ivec2 u_srcOff;
-uniform float u_opacity; uniform int u_mode; uniform bool u_atop;
+uniform float u_opacity; uniform int u_mode; uniform bool u_atop; uniform vec3 u_tint;
 out vec4 o;
 void main() {
   ivec2 p = ivec2(gl_FragCoord.xy);
   vec4 b = u_hasDst ? texelFetch(u_dst, p + u_dstOff, 0) : vec4(0.0);
   vec4 s = texelFetch(u_src, p + u_srcOff, 0) * u_opacity;
-  o = bw_blend(b, s, u_mode, u_atop);
+  int m = u_mode;
+  // 102: onion skin, the source recolored to a tint and laid over normally.
+  if (m == 102) { s = vec4(u_tint * s.a, s.a); m = 0; }
+  o = bw_blend(b, s, m, u_atop);
 }`;
 
 // Merge a stroke buffer into layer pixels (selection mask, opacity cap, alpha lock, wet edges).

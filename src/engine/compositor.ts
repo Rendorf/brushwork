@@ -1,5 +1,6 @@
 import { blendIndex, OP_REPLACE } from './blendModes';
 import type { Doc, Folder, Layer, Node } from './document';
+import { animationFrames, frameIndexOf } from './animation';
 import { TONE_GLSL, TONE_SHAPES, toneCell } from './comics/tone';
 import { drawFullscreen, FULLSCREEN_VS, Program, Surface, type GL } from './gl/gl';
 import type { Programs } from './shaders/programs';
@@ -32,6 +33,11 @@ export const TILE = 1024;
 export class Compositor {
   cache: Surface;
   preview: LayerPreview | null = null;
+  /** Animation: frame to show instead of the active one (playback, export). */
+  displayFrame: number | null = null;
+  /** Animation: draw onion skins (off during playback and export). */
+  onion = true;
+  private lastFrame = 0;
   private dirty: Rect | null = null;
   private pairs: [Surface, Surface][] = [];
   private previewTile: Surface | null = null;
@@ -69,11 +75,48 @@ export class Compositor {
     for (let y = d.y; y < d.y + d.h; y += TILE) {
       for (let x = d.x; x < d.x + d.w; x += TILE) {
         const r = { x, y, w: Math.min(TILE, d.x + d.w - x), h: Math.min(TILE, d.y + d.h - y) };
-        const out = this.composeList(this.doc.root.children, r, 0);
+        const out = this.doc.animation ? this.composeAnimation(r) : this.composeList(this.doc.root.children, r, 0);
         out.blitTo(this.cache, 0, 0, r.w, r.h, r.x, r.y);
       }
     }
     return true;
+  }
+
+  /** Index of the animation frame being shown. */
+  currentFrame(): number {
+    const frames = animationFrames(this.doc);
+    if (this.displayFrame !== null) return Math.min(this.displayFrame, frames.length - 1);
+    const i = frameIndexOf(this.doc, this.doc.active);
+    if (i >= 0) this.lastFrame = i;
+    return Math.min(this.lastFrame, frames.length - 1);
+  }
+
+  /** Animation: background, onion skins, then the current frame. */
+  private composeAnimation(r: Rect): Surface {
+    const anim = this.doc.animation!;
+    const [A, B] = this.pair(0);
+    A.clear(0, 0, r.w, r.h);
+    const st: WalkState = { A, B };
+    const frames = animationFrames(this.doc);
+    const cur = this.currentFrame();
+    if (anim.background && this.doc.root.children[0]) this.walk([this.doc.root.children[0]], r, 0, 1, st);
+    if (this.onion && this.displayFrame === null) {
+      const skin = (count: number, dir: -1 | 1, tint: [number, number, number]) => {
+        for (let k = count; k >= 1; k--) {
+          const node = frames[cur + dir * k];
+          if (!node || !node.visible) continue;
+          const src = node.kind === 'layer' ? this.layerSource(node, r) : (() => {
+            const g = this.baseGroup(node, [], r, 1);
+            return { tex: g.tex, ox: 0, oy: 0 };
+          })();
+          this.blend(src, st, r, 102, anim.onionOpacity * (1 - (k - 1) / (count + 1)), false, true, tint);
+        }
+      };
+      skin(anim.onionBefore, -1, [0.95, 0.2, 0.25]);
+      skin(anim.onionAfter, 1, [0.15, 0.75, 0.3]);
+    }
+    if (frames[cur]) this.walk([frames[cur]], r, 0, 1, st);
+    return st.A;
   }
 
   private pair(depth: number): [Surface, Surface] {
@@ -165,8 +208,9 @@ export class Compositor {
   }
 
   /** st.B = blend(st.A, src); then swap. */
-  private blend(src: Src, st: WalkState, r: Rect, mode: number, opacity: number, atop: boolean, hasDst = true): void {
+  private blend(src: Src, st: WalkState, r: Rect, mode: number, opacity: number, atop: boolean, hasDst = true, tint: [number, number, number] = [0, 0, 0]): void {
     const p = this.progs.composite.use();
+    p.v3('u_tint', tint[0], tint[1], tint[2]);
     st.B.target(0, 0, r.w, r.h);
     p.tex('u_dst', 0, st.A.tex).iv2('u_dstOff', 0, 0).b('u_hasDst', hasDst);
     p.tex('u_src', 1, src.tex).iv2('u_srcOff', src.ox, src.oy);

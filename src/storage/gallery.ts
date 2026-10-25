@@ -106,6 +106,7 @@ export async function deleteArtwork(id: string): Promise<void> {
   await tx.objectStore('docs').delete(id);
   await tx.objectStore('layers').delete(layerRange(id));
   await tx.done;
+  await (await db()).delete('timelapse', layerRange(id));
 }
 
 export async function renameArtwork(id: string, name: string): Promise<void> {

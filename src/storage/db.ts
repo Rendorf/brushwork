@@ -41,6 +41,13 @@ export interface MaterialRecord {
   added: number;
 }
 
+export interface TimelapseFrame {
+  type: string;
+  w: number;
+  h: number;
+  data: ArrayBuffer;
+}
+
 export interface RefRecord {
   id: string;
   name: string;
@@ -58,13 +65,14 @@ interface Schema extends DBSchema {
   refs: { key: string; value: RefRecord };
   fonts: { key: string; value: FontRecord };
   materials: { key: string; value: MaterialRecord };
+  timelapse: { key: string; value: TimelapseFrame };
 }
 
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>('brushwork', 3, {
+    dbp = openDB<Schema>('brushwork', 4, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           d.createObjectStore('meta', { keyPath: 'id' });
@@ -80,6 +88,7 @@ export function db(): Promise<IDBPDatabase<Schema>> {
           d.createObjectStore('fonts', { keyPath: 'id' });
           d.createObjectStore('materials', { keyPath: 'id' });
         }
+        if (oldVersion < 4) d.createObjectStore('timelapse');
       },
     });
   }

@@ -5,6 +5,7 @@ import { Doc, Folder, Layer, Selection, type Node } from './document';
 import { bindDefaultVAO, bindForSetup, createGL, drawFullscreen, gpuBytes, Surface, SurfacePool, type GL } from './gl/gl';
 import { CompoundEntry, History, PixelEntry, type HistoryEntry } from './history';
 import { createPrograms, type Programs } from './shaders/programs';
+import { animationFrames, defaultAnimation, frameIndexOf, type AnimationSettings } from './animation';
 import { renderFrames, type FrameSet } from './comics/frames';
 import type { ToneProps } from './comics/tone';
 import { FilterSession } from './filters/session';
@@ -37,6 +38,7 @@ let clipboard: Clip | null = null;
 
 type NodeProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'locked' | 'clipping' | 'alphaLock' | 'isReference'>> & {
   tone?: ToneProps | null;
+  hold?: number;
   blendMode?: FolderBlendMode;
   expanded?: boolean;
 };
@@ -88,6 +90,7 @@ export class Editor {
     this.overlayCtx = overlay.getContext('2d')!;
     this.history.onChange = () => {
       this.dirty = true;
+      this.historyListeners.forEach((f) => f());
       this.changed();
     };
     // A filter preview is computed from the current pixels; undo would make it stale.
@@ -162,6 +165,7 @@ export class Editor {
 
   dispose(): void {
     if (this.disposed) return;
+    this.stop();
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     clearTimeout(this.antsTimer);
@@ -182,6 +186,14 @@ export class Editor {
 
   // ---------------------------------------------------------------------------
   // Events
+
+  private historyListeners = new Set<() => void>();
+
+  /** Called after every undoable change, undo and redo. */
+  onHistory(fn: () => void): () => void {
+    this.historyListeners.add(fn);
+    return () => this.historyListeners.delete(fn);
+  }
 
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
@@ -578,7 +590,141 @@ export class Editor {
     if (this.textEdit && this.textEdit.layer !== node) this.endTextEdit();
     if (this.tool.busy?.()) this.tool.deactivate?.();
     this.doc.active = node;
+    // In an animation, selecting a layer can switch the frame on screen.
+    if (this.doc.animation) this.invalidate();
     this.changed();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Animation
+
+  /** Turn frame-by-frame animation on or off (one undo step). */
+  setAnimationMode(on: boolean): void {
+    const before = this.doc.animation;
+    const after = on ? before ?? defaultAnimation() : null;
+    const apply = (a: AnimationSettings | null) => {
+      this.stop();
+      this.doc.animation = a ? { ...a } : null;
+      this.invalidate();
+      this.changed();
+    };
+    apply(after);
+    this.pushCommand(on ? 'Start animation' : 'Stop animation', () => apply(after), () => apply(before));
+  }
+
+  /** Change fps, onion skin, background or loop (saved, not undoable). */
+  updateAnimation(patch: Partial<AnimationSettings>): void {
+    if (!this.doc.animation) return;
+    Object.assign(this.doc.animation, patch);
+    this.dirty = true;
+    this.invalidate();
+    this.changed();
+  }
+
+  currentFrameIndex(): number {
+    return this.compositor.currentFrame();
+  }
+
+  /** Select a frame for drawing (its top layer when the frame is a folder). */
+  setFrame(i: number): void {
+    const node = animationFrames(this.doc)[i];
+    if (!node) return;
+    let target: Node = node;
+    if (node.kind === 'folder') target = [...this.doc.allLayers(node)].reverse()[0] ?? node;
+    this.setActive(target);
+  }
+
+  /** A new empty frame right after the current one. */
+  addFrame(): Layer {
+    const frames = animationFrames(this.doc);
+    const cur = frames[this.currentFrameIndex()];
+    const index = cur ? this.doc.root.children.indexOf(cur) + 1 : this.doc.root.children.length;
+    const layer = this.doc.createLayer(`Frame ${frames.length + 1}`);
+    this.addNode(layer, 'Add frame', { parent: this.doc.root, index });
+    return layer;
+  }
+
+  /** The current frame's top-level node. */
+  currentFrameNode(): Node | null {
+    return animationFrames(this.doc)[this.currentFrameIndex()] ?? null;
+  }
+
+  playing = false;
+  private playTimer = 0;
+
+  play(): void {
+    const frames = animationFrames(this.doc);
+    if (!this.doc.animation || frames.length < 2 || this.playing) return;
+    this.playing = true;
+    let i = this.currentFrameIndex();
+    const show = () => {
+      if (!this.playing || !this.doc.animation) return;
+      const list = animationFrames(this.doc);
+      if (i >= list.length) i = 0;
+      this.compositor.displayFrame = i;
+      this.invalidate();
+      this.changed();
+      const node = list[i];
+      const wait = (Math.max(1, node.hold) / this.doc.animation.fps) * 1000;
+      this.playTimer = window.setTimeout(() => {
+        i++;
+        if (i >= list.length) {
+          if (!this.doc.animation?.loop) return this.stop();
+          i = 0;
+        }
+        show();
+      }, wait);
+    };
+    show();
+  }
+
+  stop(): void {
+    if (!this.playing) return;
+    this.playing = false;
+    clearTimeout(this.playTimer);
+    this.compositor.displayFrame = null;
+    this.invalidate();
+    this.changed();
+  }
+
+  /** Render one animation frame without onion skins (export), as straight-alpha RGBA. */
+  renderAnimationFrame(i: number, w: number, h: number, bg?: [number, number, number]): ImageData {
+    const c = this.compositor;
+    const saved = { d: c.displayFrame, o: c.onion };
+    c.displayFrame = i;
+    c.onion = false;
+    c.invalidate();
+    c.update();
+    const px = this.thumbnail(c.cache, w, h, bg);
+    c.displayFrame = saved.d;
+    c.onion = saved.o;
+    c.invalidate();
+    this.requestRender();
+    const out = new ImageData(w, h);
+    out.data.set(px);
+    if (!bg) {
+      for (let k = 0; k < out.data.length; k += 4) {
+        const a = out.data[k + 3];
+        if (a > 0 && a < 255) {
+          out.data[k] = (out.data[k] * 255) / a;
+          out.data[k + 1] = (out.data[k + 1] * 255) / a;
+          out.data[k + 2] = (out.data[k + 2] * 255) / a;
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Thumbnail of a whole node (a frame) as straight-alpha pixels. */
+  nodeThumbnail(node: Node, maxW: number, maxH: number): ImageData {
+    if (node.kind === 'layer') return this.layerThumbnail(node, maxW, maxH);
+    const i = animationFrames(this.doc).indexOf(node);
+    const k = Math.min(maxW / this.doc.width, maxH / this.doc.height, 1);
+    return this.renderAnimationFrame(i, Math.max(1, Math.round(this.doc.width * k)), Math.max(1, Math.round(this.doc.height * k)));
+  }
+
+  frameOf(node: Node | null): number {
+    return frameIndexOf(this.doc, node);
   }
 
   private addNode(node: Node, label: string, at = this.insertionPoint()): void {
@@ -1271,12 +1417,24 @@ export class Editor {
 
   /** Document thumbnail with background, as straight RGBA. */
   docThumbnail(max: number): ImageData {
-    this.compositor.update();
+    const c = this.compositor;
+    // Onion skins are an on-screen aid: keep them out of thumbnails and time-lapse frames.
+    const hideOnion = !!this.doc.animation && c.onion && c.displayFrame === null;
+    if (hideOnion) {
+      c.onion = false;
+      c.invalidate();
+    }
+    c.update();
     const k = Math.min(max / this.doc.width, max / this.doc.height, 1);
     const tw = Math.max(1, Math.round(this.doc.width * k));
     const th = Math.max(1, Math.round(this.doc.height * k));
     const bg = this.doc.background;
-    const px = this.thumbnail(this.compositor.cache, tw, th, bg.transparent ? undefined : bg.color);
+    const px = this.thumbnail(c.cache, tw, th, bg.transparent ? undefined : bg.color);
+    if (hideOnion) {
+      c.onion = true;
+      c.invalidate();
+      this.requestRender();
+    }
     const out = new ImageData(tw, th);
     out.data.set(px);
     return out;

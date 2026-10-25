@@ -77,6 +77,7 @@ export interface Settings {
   balloon: { kind: BalloonKind; stroke: number; fill: string; line: string; addText: boolean };
   frame: { border: number; gutter: number; margin: number; mode: 'cut' | 'select' };
   materials: { scale: number; color: 'fg' | 'black' | 'original' };
+  timelapse: { enabled: boolean; size: number };
   /** Last-used values per filter id, and recently used filter ids. */
   filterValues: Record<string, Record<string, unknown>>;
   recentFilters: string[];
@@ -127,6 +128,7 @@ const DEFAULTS: Settings = {
   balloon: { kind: 'oval', stroke: 6, fill: '#ffffff', line: '#000000', addText: true },
   frame: { border: 8, gutter: 40, margin: 120, mode: 'cut' },
   materials: { scale: 100, color: 'fg' },
+  timelapse: { enabled: true, size: 720 },
   filterValues: {},
   recentFilters: [],
   customBrushes: [],
@@ -152,6 +154,7 @@ export const settingsStore = createStore<Settings>()(
         balloon: { ...current.balloon, ...(p.balloon ?? {}) },
         frame: { ...current.frame, ...(p.frame ?? {}) },
         materials: { ...current.materials, ...(p.materials ?? {}) },
+        timelapse: { ...current.timelapse, ...(p.timelapse ?? {}) },
       };
     },
   }),

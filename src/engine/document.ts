@@ -1,5 +1,6 @@
 import type { BlendMode, FolderBlendMode } from './blendModes';
 import { Surface, type GL } from './gl/gl';
+import type { AnimationSettings } from './animation';
 import type { FrameSet } from './comics/frames';
 import type { ToneProps } from './comics/tone';
 import { defaultGuides, type Guides } from './guides';
@@ -23,6 +24,8 @@ export class Layer {
   frames: FrameSet | null = null;
   /** Show this layer's darkness as screentone when compositing. */
   tone: ToneProps | null = null;
+  /** Animation: how many frames this frame is held for. */
+  hold = 1;
   parent: Folder | null = null;
   /** Bumped whenever the pixels change (thumbnails, autosave). */
   contentVersion = 0;
@@ -46,6 +49,8 @@ export class Folder {
   locked = false;
   clipping = false;
   expanded = true;
+  /** Animation: how many frames this frame is held for. */
+  hold = 1;
   parent: Folder | null = null;
   /** Bottom-most child first. */
   children: Node[] = [];
@@ -131,6 +136,8 @@ export class Doc {
   selection: Selection | null = null;
   name = 'Untitled';
   guides: Guides = defaultGuides();
+  /** Frame-by-frame animation settings, or null when the artwork is not an animation. */
+  animation: AnimationSettings | null = null;
 
   constructor(readonly gl: GL, public width: number, public height: number, public dpi = 350) {}
 

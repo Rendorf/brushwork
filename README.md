@@ -73,6 +73,20 @@ A free, offline painting app in the spirit of ibis Paint. It runs in the browser
 - **Materials:** 16 seamless patterns drawn by the app, including Japanese seigaiha, asanoha and ichimatsu, plus bricks, honeycomb, scales, plaid, sakura and wood. Add your own pictures to "My materials". Tile any of them on a new layer or into a selection in any color and scale, or place a picture and transform it.
 - **Comic & manga page templates:** B5 and A4 manga pages, 4-koma, US comic book, splash page and Webtoon. Each comes with print size, 3 mm bleed, trim and safe-area guides, and a starting panel layout.
 
+## Phase 5: time-lapse and animation
+
+- **Time-lapse (Menu → Time-lapse video):**
+  - **Recording:** every stroke, edit, undo and redo saves a 480p, 720p or 1080p frame on the device. It can be turned off or deleted.
+  - **Export:** preview with a scrubber, then export as 15/30/60 s or one frame per step, holding the finished artwork at the end. The last frame can be a sharp render of the final artwork.
+- **Frame-by-frame animation (Menu → Animation):**
+  - **Frames:** each top-level layer or folder is a frame. Use folders for multi-layer frames, and optionally use the bottom layer as a shared background.
+  - **Timeline:** thumbnails, play/pause, 1–30 fps, add/duplicate/delete, and per-frame hold.
+  - **Onion skin:** up to 3 frames before (red) and after (green) at an adjustable opacity.
+- **Export:**
+  - **Animated GIF:** optional transparency, loop or play once.
+  - **Video:** H.264 MP4 encoded on the device with WebCodecs, falling back to HEVC/VP9 or the browser's recorder.
+  - **Sizes:** 100%, 50% or 25%.
+
 ## Run it
 
 ```bash
@@ -113,8 +127,12 @@ src/store/          persisted settings (zustand)
 src/ui/             React interface
 ```
 
-## Roadmap
+## Ideas for later
 
-- **Phase 5, time-lapse and extras:** record and export painting videos, and frame animation with onion skin.
+- More brush presets (the original plan aimed for about 100; there are 31 plus your own and imported ones).
+- Vector layers, and a layer mask per layer.
+- Optional hosting (GitHub Pages / Cloudflare Pages) so it can be installed as an app on iPad over HTTPS.
+
+Not planned, because the app is offline by design: online gallery, cloud sync, AI features.
 
 ibis Paint's name and its own brush, material and font libraries are not used. Brushwork ships its own presets, generated textures and open-license assets.
