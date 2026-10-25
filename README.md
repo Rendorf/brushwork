@@ -1,0 +1,88 @@
+# Brushwork
+
+A free, offline painting app in the spirit of ibis Paint. It runs in the browser on iPad (Apple Pencil pressure), Android tablets and phones, and desktop. It can be installed to the home screen as an app. Everything is stored on the device. There are no accounts, no server and no paywall.
+
+*Brushwork* is a working name.
+
+## What works now (Phase 1: painting core)
+
+- **GPU painting engine** (WebGL2):
+  - Pressure-sensitive brushes, with a stabilizer (smooth or lazy rope) and fade-in/out.
+  - Dab controls: spacing, hardness, angle, follow direction, scatter, size/flow/color jitter, paper grain and wet edges.
+  - Build-up or marker-style strokes.
+- **31 brush presets:** pens, pencils, airbrushes, watercolor, flat and oil brushes, smudge, blur, stamp brushes and erasers. Every setting can be tweaked and reset for each brush.
+- **Layers:**
+  - Organize: unlimited folders, drag to reorder.
+  - Properties: opacity, 28 blend modes (incl. Add/Color Dodge "glow"), clipping, alpha lock, lock, reference layer, background paper color or transparency.
+  - Actions: duplicate, merge down, flatten.
+- **Tools:**
+  - **Painting:** brush, eraser, smudge, blur.
+  - **Bucket fill:** samples the canvas, the layer or the reference layer; tolerance, gap closing, expand, anti-alias.
+  - **Lasso fill / lasso erase.**
+  - **Selection:** rectangle, ellipse, lasso or magic wand, combined as new/add/subtract/intersect; then invert, expand, shrink, feather, crop.
+  - **Transform:** move, scale, rotate, flip, fit.
+  - **Eyedropper and hand.**
+- **Edit and canvas operations:** copy/cut/paste as a new layer, fill and clear. Rotate or flip the canvas, canvas size, image size.
+- **Color picker:** HSV wheel, HSB/RGB sliders, hex input, recent colors and palettes.
+- **Undo/redo** for every operation, with a memory budget you can set.
+- **Gestures:** two-finger pan, pinch and rotate; two-finger tap undoes and three-finger tap redoes; long-press picks a color; palm rejection once a pen is used. Desktop keyboard shortcuts are listed in Menu → Keyboard shortcuts.
+- **Gallery:** canvas presets (Square, social, A4/B5/A5 at 350 dpi…), autosave, thumbnails, rename, duplicate, delete.
+- **Import/export:**
+  - PNG (with or without background), JPEG, layered PSD, and a lossless `.brushwork` project file.
+  - Import images, PSD files or project files.
+- **Installable PWA** that works fully offline.
+
+## Run it
+
+```bash
+npm install
+npm run dev
+```
+
+Open the printed URL. To try it on an iPad on the same Wi‑Fi, open the "Network" URL that Vite prints. Drawing works over plain http. Installing it as an app and using it offline need HTTPS, so host the `dist/` folder (see below).
+
+```bash
+npm run build      # production build in dist/
+npm run preview    # serve the build locally
+npm test           # unit tests (Vitest)
+npm run test:e2e   # browser tests in Chromium and WebKit (Playwright)
+```
+
+Run `npx playwright install chromium webkit` once before the browser tests.
+
+## Hosting for free
+
+`dist/` is a static site. Any free static host works: GitHub Pages, Cloudflare Pages or Netlify. Once it's on HTTPS, open the site in Safari on iPad and tap Share → Add to Home Screen to install it.
+
+## Project layout
+
+```
+src/engine/         painting engine (no React)
+  gl/               WebGL2 helpers (programs, surfaces)
+  shaders/          GLSL: blend modes, compositing, brush dabs, view
+  brush/            stroke math, stabilizer, presets, procedural tips/grains, GPU brush
+  tools/            brush, fill, lasso, selection, transform, eyedropper, hand
+  compositor.ts     tiled layer-tree compositing with clipping and folders
+  history.ts        tile-based pixel undo + command undo
+  editor.ts         the engine facade used by the UI
+  input.ts          pointer, pen, touch gestures and wheel
+  io/               PSD/PNG/JPEG export, project files
+src/storage/        IndexedDB gallery and autosave
+src/store/          persisted settings (zustand)
+src/ui/             React interface
+```
+
+## Roadmap
+
+- **Phase 2, drawing aids:** rulers (straight, circle/ellipse, radial), symmetry and kaleidoscope, 1/2/3-point perspective rulers, grid, shape tool, gradient tool, distort/perspective/mesh transform, a floating reference window, custom brushes from images and brush import/export.
+- **Phase 3, filters:**
+  - **Color adjustments:** HSL, levels, curves, gradient map, posterize.
+  - **Blur and light effects:** blurs, sharpen, glow, drop shadow, outline.
+  - **Photo effects:** line extraction, anime-style background from a photo.
+  - **Texture effects:** halftone, mosaic, noise, chromatic aberration.
+  - **Distortions:** wave, swirl, ripple, bulge.
+  - **Pattern generators.**
+- **Phase 4, text and comics:** text layers (horizontal or vertical, open-license fonts, imported fonts), speech balloons, a comic frame divider, screentones, materials, and manga page templates.
+- **Phase 5, time-lapse and extras:** record and export painting videos, frame animation with onion skin, and Photoshop `.abr` brush import.
+
+ibis Paint's name and its own brush, material and font libraries are not used. Brushwork ships its own presets, generated textures and open-license assets.
