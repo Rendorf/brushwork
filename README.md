@@ -4,6 +4,8 @@ A free, offline painting app in the spirit of ibis Paint. It runs in the browser
 
 *Brushwork* is a working name.
 
+**Use it:** https://rendorf.github.io/brushwork/. On iPad, open it in Safari, tap Share → **Add to Home Screen**, then launch it from the home screen. It works offline after the first visit.
+
 ## What works now (Phase 1: painting core)
 
 - **GPU painting engine** (WebGL2):
@@ -105,9 +107,9 @@ npm run test:e2e   # browser tests in Chromium and WebKit (Playwright)
 
 Run `npx playwright install chromium webkit` once before the browser tests.
 
-## Hosting for free
+## Hosting
 
-`dist/` is a static site. Any free static host works: GitHub Pages, Cloudflare Pages or Netlify. Once it's on HTTPS, open the site in Safari on iPad and tap Share → Add to Home Screen to install it.
+Every push to `main` runs the unit tests, builds the app and publishes it to GitHub Pages (`.github/workflows/deploy.yml`). `dist/` is a plain static site, so any static host also works (Cloudflare Pages, Netlify…). Installing on iPad and working offline need HTTPS.
 
 ## Project layout
 
