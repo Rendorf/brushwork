@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { deleteArtwork, duplicateArtwork, getThumb, listArtworks, newArtworkId, renameArtwork, type ArtworkMeta } from '../storage/gallery';
 import { Dialog, Icon, IconButton, NumberField, Segmented } from './components';
 import type { OpenRequest } from './EditorView';
+import { PAGE_TEMPLATES } from '../engine/comics/templates';
 
 interface Preset {
   label: string;
@@ -52,8 +53,18 @@ function NewCanvasDialog({ onClose, onCreate }: { onClose: () => void; onCreate:
   const [dpi, setDpi] = useState(all[1].dpi);
   const [name, setName] = useState('Untitled');
   const [bg, setBg] = useState<'white' | 'transparent'>('white');
+  const [template, setTemplate] = useState<string | null>(null);
   const max = maxTextureSize();
+  const pickTemplate = (id: string) => {
+    const t = PAGE_TEMPLATES.find((x) => x.id === id)!;
+    setSel(-1);
+    setTemplate(id);
+    setW(Math.min(t.w, max));
+    setH(Math.min(t.h, max));
+    setDpi(t.dpi);
+  };
   const pick = (i: number) => {
+    setTemplate(null);
     setSel(i);
     setW(Math.min(all[i].w, max));
     setH(Math.min(all[i].h, max));
@@ -67,7 +78,7 @@ function NewCanvasDialog({ onClose, onCreate }: { onClose: () => void; onCreate:
         <button
           className="btn primary"
           onClick={() =>
-            onCreate({ kind: 'new', id: newArtworkId(), width: w, height: h, dpi, name: name.trim() || 'Untitled', transparent: bg === 'transparent', bg: [255, 255, 255] })
+            onCreate({ kind: 'new', id: newArtworkId(), width: w, height: h, dpi, name: name.trim() || 'Untitled', transparent: bg === 'transparent', bg: [255, 255, 255], template: template ?? undefined })
           }
         >
           Create
@@ -85,14 +96,24 @@ function NewCanvasDialog({ onClose, onCreate }: { onClose: () => void; onCreate:
           </button>
         ))}
       </div>
+      <div className="section-title">Comics &amp; manga</div>
+      <div className="preset-list">
+        {PAGE_TEMPLATES.map((t) => (
+          <button key={t.id} className={`preset ${template === t.id ? 'on' : ''}`} onClick={() => pickTemplate(t.id)} title={t.note}>
+            <span className="preset-shape" style={{ aspectRatio: `${t.w} / ${Math.min(t.h, t.w * 2.2)}` }} />
+            <span className="preset-label">{t.label}</span>
+            <span className="preset-size">{t.note}</span>
+          </button>
+        ))}
+      </div>
       <label className="field">
         <span>Name</span>
         <span className="field-input">
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </span>
       </label>
-      <NumberField label="Width" value={w} min={16} max={max} suffix="px" onChange={(v) => { setW(v); setSel(-1); }} />
-      <NumberField label="Height" value={h} min={16} max={max} suffix="px" onChange={(v) => { setH(v); setSel(-1); }} />
+      <NumberField label="Width" value={w} min={16} max={max} suffix="px" onChange={(v) => { setW(v); setSel(-1); setTemplate(null); }} />
+      <NumberField label="Height" value={h} min={16} max={max} suffix="px" onChange={(v) => { setH(v); setSel(-1); setTemplate(null); }} />
       <NumberField label="Resolution" value={dpi} min={36} max={1200} suffix="dpi" onChange={setDpi} />
       <div className="field">
         <span>Background</span>

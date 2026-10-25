@@ -1,6 +1,7 @@
 import { blendIndex, OP_REPLACE } from './blendModes';
 import type { Doc, Folder, Layer, Node } from './document';
-import { drawFullscreen, Surface, type GL } from './gl/gl';
+import { TONE_GLSL, TONE_SHAPES, toneCell } from './comics/tone';
+import { drawFullscreen, FULLSCREEN_VS, Program, Surface, type GL } from './gl/gl';
 import type { Programs } from './shaders/programs';
 import { clampToDoc, union, type Rect } from './util/geom';
 
@@ -34,6 +35,8 @@ export class Compositor {
   private dirty: Rect | null = null;
   private pairs: [Surface, Surface][] = [];
   private previewTile: Surface | null = null;
+  private toneTile: Surface | null = null;
+  private toneProg: Program | null = null;
 
   constructor(private gl: GL, private progs: Programs, private doc: Doc) {
     this.cache = new Surface(gl, doc.width, doc.height);
@@ -137,12 +140,28 @@ export class Compositor {
   }
 
   private layerSource(layer: Layer, r: Rect): Src {
+    let src: Src = { tex: layer.surface.tex, ox: r.x, oy: r.y };
     if (this.preview && this.preview.layer === layer) {
       if (!this.previewTile) this.previewTile = new Surface(this.gl, TILE, TILE);
       this.preview.render(this.previewTile, r);
-      return { tex: this.previewTile.tex, ox: 0, oy: 0 };
+      src = { tex: this.previewTile.tex, ox: 0, oy: 0 };
     }
-    return { tex: layer.surface.tex, ox: r.x, oy: r.y };
+    if (layer.tone) src = this.toneSource(layer, src, r);
+    return src;
+  }
+
+  /** Screentone layers: turn the layer's darkness into a dot / line / noise screen. */
+  private toneSource(layer: Layer, src: Src, r: Rect): Src {
+    const t = layer.tone!;
+    if (!this.toneTile) this.toneTile = new Surface(this.gl, TILE, TILE);
+    if (!this.toneProg) this.toneProg = new Program(this.gl, FULLSCREEN_VS, TONE_GLSL, 'tone');
+    const p = this.toneProg.use();
+    this.toneTile.target(0, 0, r.w, r.h);
+    const a = (t.angle * Math.PI) / 180;
+    p.tex('u_src', 0, src.tex).iv2('u_srcOff', src.ox, src.oy).v2('u_origin', r.x, r.y);
+    p.f('u_cell', toneCell(t, this.doc.dpi)).v2('u_rot', Math.cos(a), Math.sin(a)).i('u_shape', TONE_SHAPES.indexOf(t.shape));
+    drawFullscreen(this.gl);
+    return { tex: this.toneTile.tex, ox: 0, oy: 0 };
   }
 
   /** st.B = blend(st.A, src); then swap. */
@@ -163,5 +182,6 @@ export class Compositor {
     this.pairs.forEach(([a, b]) => { a.dispose(); b.dispose(); });
     this.pairs = [];
     this.previewTile?.dispose();
+    this.toneTile?.dispose();
   }
 }

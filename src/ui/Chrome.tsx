@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { hsvToRgb } from '../engine/brush/stroke';
 import { getBrush } from '../engine/brush/library';
 import { makeRuler, type Ruler, type SymmetryKind } from '../engine/guides';
+import type { BalloonTool } from '../engine/tools/balloonTool';
+import type { FrameTool } from '../engine/tools/frameTool';
 import type { TransformTool } from '../engine/tools/transformTool';
-import { isBrushTool, setSettings, updateBrushTool, type GradientType, type ShapeKind, type ToolId } from '../store/settings';
+import { FontSelect } from './TextPanel';
+import { isBrushTool, setSettings, updateBrushTool, type BalloonKind, type GradientType, type ShapeKind, type ToolId } from '../store/settings';
 import { Icon, IconButton, Segmented, Slider, Toggle } from './components';
 import { GradientBar, GradientEditor } from './GradientEditor';
 import { useEditor, useSettings } from './hooks';
 
-export type PanelId = 'tools' | 'brush' | 'color' | 'layers' | 'menu' | 'settings' | 'filters' | null;
+export type PanelId = 'tools' | 'brush' | 'color' | 'layers' | 'menu' | 'settings' | 'filters' | 'materials' | null;
 
 export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }[] = [
   { id: 'brush', label: 'Brush', icon: 'brush', key: 'B' },
@@ -22,11 +25,14 @@ export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }
   { id: 'shape', label: 'Shape', icon: 'shape', key: 'U' },
   { id: 'gradient', label: 'Gradient', icon: 'gradient', key: 'D' },
   { id: 'ruler', label: 'Ruler & Symmetry', icon: 'ruler', key: 'R' },
+  { id: 'text', label: 'Text', icon: 'text', key: 'T' },
+  { id: 'balloon', label: 'Speech Balloon', icon: 'balloon', key: 'W' },
+  { id: 'frame', label: 'Frame Divider', icon: 'frame', key: 'N' },
   { id: 'eyedropper', label: 'Eyedropper', icon: 'eyedropper', key: 'I' },
   { id: 'hand', label: 'Hand', icon: 'hand', key: 'H' },
 ];
 
-export function ToolGrid({ onPick, onFilters }: { onPick: () => void; onFilters: () => void }) {
+export function ToolGrid({ onPick, onFilters, onMaterials }: { onPick: () => void; onFilters: () => void; onMaterials: () => void }) {
   const ed = useEditor();
   const tool = useSettings((s) => s.tool);
   return (
@@ -49,6 +55,10 @@ export function ToolGrid({ onPick, onFilters }: { onPick: () => void; onFilters:
         <Icon name="filter" size={26} />
         <span>Filters</span>
         <kbd>F</kbd>
+      </button>
+      <button className="tool-item" onClick={onMaterials}>
+        <Icon name="materials" size={26} />
+        <span>Materials</span>
       </button>
     </div>
   );
@@ -150,6 +160,7 @@ function GuideOptions() {
       {g.symmetry && g.symmetry.kind !== 'mirror' && (
         <Slider label="Segments" value={g.symmetry.n} min={2} max={24} step={1} onChange={(n) => ed.setGuides({ symmetry: { ...g.symmetry!, n } })} className="compact" />
       )}
+      {g.page && <Toggle label="Page guides" value={g.pageOn !== false} onChange={(pageOn) => ed.setGuides({ pageOn })} />}
       <Toggle label="Grid" value={g.gridOn} onChange={(gridOn) => ed.setGuides({ gridOn })} />
       {g.gridOn && <Slider label="Grid size" value={g.gridSize} min={8} max={1000} step={1} log onChange={(gridSize) => ed.setGuides({ gridSize })} className="compact" />}
     </>
@@ -343,6 +354,12 @@ export function ToolOptions() {
         <Slider label="Opacity" value={gradient.opacity * 100} min={1} max={100} step={1} format={(v) => `${Math.round(v)}%`} onChange={(v) => setSettings({ gradient: { ...gradient, opacity: v / 100 } })} className="compact" />
       </>
     );
+  } else if (tool === 'text') {
+    body = <TextOptions />;
+  } else if (tool === 'balloon') {
+    body = <BalloonOptions />;
+  } else if (tool === 'frame') {
+    body = <FrameOptions />;
   } else if (tool === 'eyedropper') {
     body = (
       <Segmented
@@ -367,6 +384,103 @@ export function ToolOptions() {
     <>
       <div className="tool-options">{body}</div>
       {editGradient && <GradientEditor onClose={() => setEditGradient(false)} />}
+    </>
+  );
+}
+
+function TextOptions() {
+  const d = useSettings((s) => s.textDefaults);
+  const set = (patch: Partial<typeof d>) => setSettings((s) => ({ textDefaults: { ...s.textDefaults, ...patch } }));
+  return (
+    <>
+      <FontSelect value={d.font} onChange={(font) => set({ font })} />
+      <Slider label="Size" value={d.size} min={6} max={1000} step={1} log format={(v) => `${Math.round(v)}px`} onChange={(size) => set({ size })} className="compact" />
+      <Segmented
+        value={d.vertical ? 'v' : 'h'}
+        onChange={(v) => set({ vertical: v === 'v' })}
+        options={[
+          { value: 'h', label: 'Horizontal' },
+          { value: 'v', label: 'Vertical' },
+        ]}
+      />
+      <span className="opt-hint">Tap the canvas to add text, or tap a text to edit it.</span>
+    </>
+  );
+}
+
+function BalloonOptions() {
+  const ed = useEditor();
+  const b = useSettings((s) => s.balloon);
+  const tool = ed.tools.balloon as BalloonTool;
+  const set = (patch: Partial<typeof b>) => setSettings((s) => ({ balloon: { ...s.balloon, ...patch } }));
+  return (
+    <>
+      <Segmented
+        value={b.kind}
+        onChange={(kind: BalloonKind) => {
+          set({ kind });
+          tool.setKind(kind);
+        }}
+        options={[
+          { value: 'oval', label: 'Speech' },
+          { value: 'round', label: 'Rounded' },
+          { value: 'cloud', label: 'Thought' },
+          { value: 'spiky', label: 'Shout' },
+          { value: 'box', label: 'Narration' },
+        ]}
+      />
+      <Slider label="Outline" value={b.stroke} min={0} max={40} step={0.5} onChange={(stroke) => { set({ stroke }); ed.requestRender(); }} className="compact" />
+      <label className="stop-color small" style={{ background: b.fill }} title="Fill color">
+        <input type="color" value={b.fill} onChange={(e) => set({ fill: e.target.value })} aria-label="Balloon fill color" />
+      </label>
+      <label className="stop-color small" style={{ background: b.line }} title="Outline color">
+        <input type="color" value={b.line} onChange={(e) => set({ line: e.target.value })} aria-label="Balloon outline color" />
+      </label>
+      <Toggle label="Add text" value={b.addText} onChange={(addText) => set({ addText })} />
+      {tool.pending && (
+        <>
+          <button className="chip" onClick={() => tool.discard()}>Cancel</button>
+          <button className="chip primary" onClick={() => tool.commit()}>
+            <Icon name="check" size={16} /> Done
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+function FrameOptions() {
+  const ed = useEditor();
+  const f = useSettings((s) => s.frame);
+  const tool = ed.tools.frame as FrameTool;
+  const layer = tool.frameLayer();
+  const set = (patch: Partial<typeof f>) => setSettings((s) => ({ frame: { ...s.frame, ...patch } }));
+  if (!layer?.frames) {
+    return (
+      <>
+        <Slider label="Page margin" value={f.margin} min={0} max={600} step={1} onChange={(margin) => set({ margin })} className="compact" />
+        <Slider label="Border" value={f.border} min={0} max={40} step={0.5} onChange={(border) => set({ border })} className="compact" />
+        <button className="chip primary" onClick={() => tool.createFrames()}>
+          <Icon name="plus" size={16} /> Create frame layer
+        </button>
+      </>
+    );
+  }
+  const fs = layer.frames;
+  return (
+    <>
+      <Segmented
+        value={f.mode}
+        onChange={(mode) => set({ mode })}
+        options={[
+          { value: 'cut', label: 'Cut panels' },
+          { value: 'select', label: 'Select panel' },
+        ]}
+      />
+      <Slider label="Gap" value={f.gutter} min={0} max={300} step={1} onChange={(gutter) => set({ gutter })} className="compact" />
+      <Slider label="Border" value={fs.border} min={0} max={40} step={0.5} onChange={() => {}} onCommit={(border) => ed.setFrames(layer, { ...fs, border }, 'Frame border')} className="compact" />
+      <Toggle label="White gaps" value={fs.gutterColor !== 'transparent'} onChange={(v) => ed.setFrames(layer, { ...fs, gutterColor: v ? '#ffffff' : 'transparent' }, 'Frame gaps')} />
+      <span className="opt-hint">{f.mode === 'cut' ? 'Drag across a panel to split it.' : 'Tap a panel to select it, then draw inside.'}</span>
     </>
   );
 }

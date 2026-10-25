@@ -17,15 +17,16 @@ import { LayerPanel } from './LayerPanel';
 import { HelpDialog, MainMenu, SettingsPanel } from './Menus';
 import { ReferenceWindow } from './ReferenceWindow';
 import { FilterDialog, FilterList } from './FilterPanels';
+import { MaterialsPanel } from './MaterialsPanel';
+import { TextPanel } from './TextPanel';
+import { applyTemplate, PAGE_TEMPLATES } from '../engine/comics/templates';
 
 export type OpenRequest =
   | { kind: 'open'; id: string }
-  | { kind: 'new'; id: string; width: number; height: number; dpi: number; name: string; transparent: boolean; bg: [number, number, number] }
+  | { kind: 'new'; id: string; width: number; height: number; dpi: number; name: string; transparent: boolean; bg: [number, number, number]; template?: string }
   | { kind: 'import'; id: string; file: File };
 
 export function EditorView({ req, onExit, toast }: { req: OpenRequest; onExit: () => void; toast: (m: string) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [ed, setEd] = useState<Editor | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +36,16 @@ export function EditorView({ req, onExit, toast }: { req: OpenRequest; onExit: (
     let input: InputController | null = null;
     let ro: ResizeObserver | null = null;
     let cancelled = false;
+    // Fresh canvases for every editor: a canvas whose WebGL context was released cannot be reused.
+    const stageEl = stageRef.current!;
+    const glCanvas = Object.assign(document.createElement('canvas'), { className: 'gl-canvas' });
+    const overlayCanvas = Object.assign(document.createElement('canvas'), { className: 'overlay-canvas' });
+    stageEl.prepend(glCanvas, overlayCanvas);
     try {
-      editor = new Editor(canvasRef.current!, overlayRef.current!);
+      editor = new Editor(glCanvas, overlayCanvas);
     } catch (e) {
+      glCanvas.remove();
+      overlayCanvas.remove();
       setError((e as Error).message);
       return;
     }
@@ -59,6 +67,11 @@ export function EditorView({ req, onExit, toast }: { req: OpenRequest; onExit: (
       }
       if (cancelled) return doc.dispose();
       e.setDocument(doc);
+      const tpl = req.kind === 'new' && req.template ? PAGE_TEMPLATES.find((t) => t.id === req.template) : undefined;
+      if (tpl) {
+        applyTemplate(e, tpl);
+        e.history.clear();
+      }
       if (fresh) {
         markUnsaved(doc);
         e.dirty = true;
@@ -78,6 +91,8 @@ export function EditorView({ req, onExit, toast }: { req: OpenRequest; onExit: (
       input?.detach();
       ro?.disconnect();
       e.dispose();
+      glCanvas.remove();
+      overlayCanvas.remove();
     };
     // The request object identifies the artwork for the lifetime of this view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,8 +101,6 @@ export function EditorView({ req, onExit, toast }: { req: OpenRequest; onExit: (
   return (
     <div className="editor">
       <div className="stage" ref={stageRef}>
-        <canvas ref={canvasRef} className="gl-canvas" />
-        <canvas ref={overlayRef} className="overlay-canvas" />
       </div>
       {error && (
         <div className="error-box">
@@ -131,6 +144,8 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
   const leftHanded = useSettings((s) => s.leftHanded);
   const tool = useSettings((s) => s.tool);
   const refOpen = useSettings((s) => s.refWindow.open);
+  const act = ed.doc.activeLayer();
+  const activeText = act?.text ? act : null;
   const saving = useRef<Promise<void> | null>(null);
 
   const save = useCallback(async () => {
@@ -196,15 +211,17 @@ function EditorChrome({ id, onExit }: { id: string; onExit: () => void }) {
       <SideSliders left={!leftHanded} />
       {panel === 'tools' && (
         <Panel title="Tools" onClose={() => setPanel(null)} className="tools-panel">
-          <ToolGrid onPick={() => setPanel(null)} onFilters={() => setPanel('filters')} />
+          <ToolGrid onPick={() => setPanel(null)} onFilters={() => setPanel('filters')} onMaterials={() => setPanel('materials')} />
         </Panel>
       )}
       {panel === 'brush' && <BrushPanel onClose={() => setPanel(null)} />}
       {panel === 'color' && <ColorPanel onClose={() => setPanel(null)} />}
       {panel === 'layers' && <LayerPanel onClose={() => setPanel(null)} />}
-      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onFilters={() => setPanel('filters')} onHelp={() => { setHelp(true); setPanel(null); }} />}
+      {panel === 'menu' && <MainMenu onClose={() => setPanel(null)} onSave={save} onSettings={() => setPanel('settings')} onFilters={() => setPanel('filters')} onMaterials={() => setPanel('materials')} onHelp={() => { setHelp(true); setPanel(null); }} />}
       {panel === 'settings' && <SettingsPanel onClose={() => setPanel(null)} />}
       {panel === 'filters' && <FilterList onClose={() => setPanel(null)} />}
+      {panel === 'materials' && <MaterialsPanel onClose={() => setPanel(null)} />}
+      {tool === 'text' && activeText && panel === null && <TextPanel key={activeText.id} layer={activeText} />}
       {ed.filter && <FilterDialog key={ed.filter.def.id} />}
       {help && <HelpDialog onClose={() => setHelp(false)} />}
       {refOpen && <ReferenceWindow />}

@@ -26,7 +26,15 @@ export interface Symmetry {
   n: number;
 }
 
+/** Print guides for comic pages: the trim line and the safe (inner) area. */
+export interface PageGuides {
+  trim: { x: number; y: number; w: number; h: number };
+  safe: { x: number; y: number; w: number; h: number } | null;
+}
+
 export interface Guides {
+  page?: PageGuides | null;
+  pageOn?: boolean;
   ruler: Ruler | null;
   rulerOn: boolean;
   symmetry: Symmetry | null;

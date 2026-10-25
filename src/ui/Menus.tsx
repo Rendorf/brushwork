@@ -25,7 +25,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onFilters: () => void; onHelp: () => void }) {
+export function MainMenu(props: { onClose: () => void; onSave: () => void; onSettings: () => void; onFilters: () => void; onMaterials: () => void; onHelp: () => void }) {
   const ed = useEditor();
   const [dialog, setDialog] = useState<'canvas' | 'image' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,6 +78,7 @@ export function MainMenu(props: { onClose: () => void; onSave: () => void; onSet
       </Group>
       <Group title="Filters">
         <MenuItem icon="filter" label="Filters…" hint="F" onClick={props.onFilters} />
+        <MenuItem icon="materials" label="Materials…" onClick={props.onMaterials} />
       </Group>
       <Group title="Edit">
         <MenuItem icon="copy" label="Copy" hint="Ctrl C" onClick={run(() => ed.copy())} />
@@ -251,6 +252,7 @@ export function HelpDialog({ onClose }: { onClose: () => void }) {
     ['G / L / M / V / I / H', 'Fill / Lasso fill / Select / Transform / Eyedropper / Hand'],
     ['U / D / R', 'Shape / Gradient / Ruler & symmetry'],
     ['F', 'Filters (Enter applies, Esc cancels)'],
+    ['T / W / N', 'Text / Speech balloon / Frame divider'],
     ['Shift while dragging', 'Square shapes, 15° lines, 45° gradients, snap rotation'],
     ['[ and ]', 'Brush size'],
     ['Ctrl Z / Ctrl ⇧ Z', 'Undo / Redo'],

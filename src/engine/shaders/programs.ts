@@ -325,6 +325,12 @@ in vec2 v_uv;
 out vec4 o;
 void main() { o = texture(u_src, v_uv) * u_opacity; }`;
 
+// Repeating pattern (materials) in document space.
+const PATTERN_FS = /* glsl */ `
+uniform sampler2D u_tile; uniform vec2 u_tileSize;
+out vec4 o;
+void main() { o = texture(u_tile, gl_FragCoord.xy / u_tileSize); }`;
+
 export interface Programs {
   composite: Program;
   merge: Program;
@@ -339,6 +345,7 @@ export interface Programs {
   gradient: Program;
   proj: Program;
   mesh: Program;
+  pattern: Program;
 }
 
 export function createPrograms(gl: GL): Programs {
@@ -356,5 +363,6 @@ export function createPrograms(gl: GL): Programs {
     gradient: new Program(gl, FULLSCREEN_VS, GRADIENT_FS, 'gradient'),
     proj: new Program(gl, FULLSCREEN_VS, PROJ_FS, 'proj'),
     mesh: new Program(gl, MESH_VS, MESH_FS, 'mesh'),
+    pattern: new Program(gl, FULLSCREEN_VS, PATTERN_FS, 'pattern'),
   };
 }

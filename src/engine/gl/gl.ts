@@ -38,6 +38,7 @@ export class Program {
   private locs = new Map<string, WebGLUniformLocation | null>();
 
   constructor(readonly gl: GL, vs: string, fs: string, readonly name = 'program') {
+    if (gl.isContextLost()) throw new Error('The graphics (GPU) context was lost. Please reload the page.');
     const prog = gl.createProgram()!;
     gl.attachShader(prog, this.compile(gl.VERTEX_SHADER, VERSION + vs));
     gl.attachShader(prog, this.compile(gl.FRAGMENT_SHADER, VERSION + fs));

@@ -1,6 +1,9 @@
 import type { BlendMode, FolderBlendMode } from './blendModes';
 import { Surface, type GL } from './gl/gl';
+import type { FrameSet } from './comics/frames';
+import type { ToneProps } from './comics/tone';
 import { defaultGuides, type Guides } from './guides';
+import type { TextProps } from './text/textRender';
 import { uid, type Rect } from './util/geom';
 
 export class Layer {
@@ -14,6 +17,12 @@ export class Layer {
   clipping = false;
   alphaLock = false;
   isReference = false;
+  /** Editable text; the pixels are re-rendered from it. */
+  text: TextProps | null = null;
+  /** Comic frames; the pixels are re-rendered from them. */
+  frames: FrameSet | null = null;
+  /** Show this layer's darkness as screentone when compositing. */
+  tone: ToneProps | null = null;
   parent: Folder | null = null;
   /** Bumped whenever the pixels change (thumbnails, autosave). */
   contentVersion = 0;

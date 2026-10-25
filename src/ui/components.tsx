@@ -66,6 +66,11 @@ const ICONS: Record<string, string> = {
   distort: 'M5 5l14 2.5-2.5 12L4 16.5z',
   mesh: 'M4 4h16v16H4z M4 12c5.3-2.5 10.7 2.5 16 0 M12 4c-2.5 5.3 2.5 10.7 0 16',
   filter: 'M12 3l2.2 5.5L20 9l-4.4 3.9L17 19l-5-3.2L7 19l1.4-6.1L4 9l5.8-.5z M12 8v5',
+  text: 'M5 6V4h14v2 M12 4v16 M9 20h6',
+  balloon: 'M12 4c4.97 0 9 3.13 9 7s-4.03 7-9 7c-.9 0-1.77-.1-2.6-.3L5 20l1.2-3.6C4.2 15.1 3 13.2 3 11c0-3.87 4.03-7 9-7z',
+  frame: 'M3 3h18v18H3z M3 10h18 M12 10v11',
+  materials: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z M4 4l7 7 M13 4l7 7 M4 13l7 7 M13 13l7 7',
+  tone: 'M4 4h16v16H4z M8 8h.01 M12 8h.01 M16 8h.01 M8 12h.01 M12 12h.01 M16 12h.01 M8 16h.01 M12 16h.01 M16 16h.01',
   brushPlus: 'M4 20l4-1 9-9a2.1 2.1 0 00-3-3L5 16l-1 4z M17 15v6 M14 18h6',
 };
 

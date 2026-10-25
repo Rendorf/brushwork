@@ -25,6 +25,22 @@ export interface TipRecord {
   data: ArrayBuffer;
 }
 
+export interface FontRecord {
+  id: string;
+  /** CSS family name the font is registered under. */
+  family: string;
+  label: string;
+  data: ArrayBuffer;
+}
+
+export interface MaterialRecord {
+  id: string;
+  name: string;
+  type: string;
+  data: ArrayBuffer;
+  added: number;
+}
+
 export interface RefRecord {
   id: string;
   name: string;
@@ -40,13 +56,15 @@ interface Schema extends DBSchema {
   layers: { key: string; value: LayerRecord };
   tips: { key: string; value: TipRecord };
   refs: { key: string; value: RefRecord };
+  fonts: { key: string; value: FontRecord };
+  materials: { key: string; value: MaterialRecord };
 }
 
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>('brushwork', 2, {
+    dbp = openDB<Schema>('brushwork', 3, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           d.createObjectStore('meta', { keyPath: 'id' });
@@ -57,6 +75,10 @@ export function db(): Promise<IDBPDatabase<Schema>> {
         if (oldVersion < 2) {
           d.createObjectStore('tips', { keyPath: 'id' });
           d.createObjectStore('refs', { keyPath: 'id' });
+        }
+        if (oldVersion < 3) {
+          d.createObjectStore('fonts', { keyPath: 'id' });
+          d.createObjectStore('materials', { keyPath: 'id' });
         }
       },
     });

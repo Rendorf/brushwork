@@ -3,7 +3,10 @@ import type { ToolId } from '../../store/settings';
 import { BrushTool } from './brushTool';
 import { EyedropperTool, FillTool, HandTool, LassoFillTool, SelectTool } from './simpleTools';
 import type { Tool } from './tool';
+import { BalloonTool } from './balloonTool';
+import { FrameTool } from './frameTool';
 import { GradientTool } from './gradientTool';
+import { TextTool } from './textTool';
 import { RulerTool } from './rulerTool';
 import { ShapeTool } from './shapeTool';
 import { TransformTool } from './transformTool';
@@ -23,5 +26,8 @@ export function createTools(ed: Editor): Record<ToolId, Tool> {
     ruler: new RulerTool(ed),
     shape: new ShapeTool(ed),
     gradient: new GradientTool(ed),
+    text: new TextTool(ed),
+    balloon: new BalloonTool(ed),
+    frame: new FrameTool(ed),
   };
 }

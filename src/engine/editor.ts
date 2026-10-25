@@ -5,6 +5,8 @@ import { Doc, Folder, Layer, Selection, type Node } from './document';
 import { bindDefaultVAO, bindForSetup, createGL, drawFullscreen, gpuBytes, Surface, SurfacePool, type GL } from './gl/gl';
 import { CompoundEntry, History, PixelEntry, type HistoryEntry } from './history';
 import { createPrograms, type Programs } from './shaders/programs';
+import { renderFrames, type FrameSet } from './comics/frames';
+import type { ToneProps } from './comics/tone';
 import { FilterSession } from './filters/session';
 import type { FilterDef, Values } from './filters/types';
 import type { Guides, P } from './guides';
@@ -15,6 +17,7 @@ import { drawPickRing } from './tools/simpleTools';
 import type { Tool, ToolPointer } from './tools/tool';
 import { alphaBounds, blurMask, dilate, erode, premultiply } from './util/pixels';
 import { clampToDoc, intersect, toMat3, type Rect } from './util/geom';
+import { renderText, textLayerName, type TextProps } from './text/textRender';
 import { Viewport } from './viewport';
 import { invertMat3, mat3ToGL, squareToQuad } from './warp';
 import { getSettings, isBrushTool, settingsStore, type ToolId } from '../store/settings';
@@ -33,6 +36,7 @@ interface Clip {
 let clipboard: Clip | null = null;
 
 type NodeProps = Partial<Pick<Layer, 'name' | 'visible' | 'opacity' | 'locked' | 'clipping' | 'alphaLock' | 'isReference'>> & {
+  tone?: ToneProps | null;
   blendMode?: FolderBlendMode;
   expanded?: boolean;
 };
@@ -87,7 +91,10 @@ export class Editor {
       this.changed();
     };
     // A filter preview is computed from the current pixels; undo would make it stale.
-    this.history.beforeUndoRedo = () => this.filter?.cancel();
+    this.history.beforeUndoRedo = () => {
+      this.filter?.cancel();
+      this.endTextEdit();
+    };
     canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
       this.toast('The GPU context was lost. Your last autosave is safe; reopen the artwork.');
@@ -308,6 +315,10 @@ export class Editor {
     }
     if (!this.doc.isVisible(l)) {
       this.toast('This layer is hidden.');
+      return null;
+    }
+    if (l.text || l.frames) {
+      this.toast(l.text ? 'This is a text layer. Rasterize it (layer panel) to paint on it.' : 'This is a frame layer. Rasterize it (layer panel) to paint on it.');
       return null;
     }
     return l;
@@ -564,6 +575,7 @@ export class Editor {
 
   setActive(node: Node | null): void {
     this.filter?.cancel();
+    if (this.textEdit && this.textEdit.layer !== node) this.endTextEdit();
     if (this.tool.busy?.()) this.tool.deactivate?.();
     this.doc.active = node;
     this.changed();
@@ -725,6 +737,10 @@ export class Editor {
       this.toast('The layer below is locked.');
       return;
     }
+    if (below.text || below.frames) {
+      this.toast('Rasterize the layer below first (it is a text or frame layer).');
+      return;
+    }
     if (!layer.visible) {
       this.toast('Show the layer before merging it.');
       return;
@@ -827,6 +843,160 @@ export class Editor {
     this.dirty = true;
     if (notify) this.changed();
     else this.requestRender();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Text and frame layers (pixels are rendered from their data)
+
+  /** Upload straight-alpha pixels to a surface at (x, y), clipped to it. */
+  uploadStraight(surface: Surface, img: ImageData, x: number, y: number): void {
+    const r = intersect({ x, y, w: img.width, h: img.height }, { x: 0, y: 0, w: surface.w, h: surface.h });
+    if (!r) return;
+    const pm = premultiply(img.data);
+    const sub = new Uint8Array(r.w * r.h * 4);
+    for (let row = 0; row < r.h; row++) {
+      const start = ((r.y - y + row) * img.width + (r.x - x)) * 4;
+      sub.set(pm.subarray(start, start + r.w * 4), row * r.w * 4);
+    }
+    surface.upload(r.x, r.y, r.w, r.h, sub);
+  }
+
+  private textSeq = new WeakMap<Layer, number>();
+
+  /** Re-render a text layer from its text (waits for its font to load). */
+  async renderTextLayer(layer: Layer): Promise<void> {
+    const t = layer.text;
+    if (!t) return;
+    const seq = (this.textSeq.get(layer) ?? 0) + 1;
+    this.textSeq.set(layer, seq);
+    const r = await renderText(t);
+    // A newer edit superseded this render.
+    if (this.disposed || this.textSeq.get(layer) !== seq || layer.text !== t) return;
+    layer.surface.clear();
+    if (r) this.uploadStraight(layer.surface, r.img, r.x, r.y);
+    layer.name = textLayerName(t);
+    layer.touch();
+    this.dirty = true;
+    this.invalidate();
+    this.changed();
+  }
+
+  /** Text being edited: its state before the edit, so the whole edit is one undo step. */
+  private textEdit: { layer: Layer; before: TextProps | null } | null = null;
+
+  beginTextEdit(layer: Layer): void {
+    if (this.textEdit?.layer === layer) return;
+    this.endTextEdit();
+    this.textEdit = { layer, before: layer.text ? structuredClone(layer.text) : null };
+  }
+
+  endTextEdit(): void {
+    const t = this.textEdit;
+    if (!t) return;
+    this.textEdit = null;
+    this.commitText(t.layer, t.before, 'Edit text');
+  }
+
+  /** Live text change (typing, dragging); recorded as one undo step by endTextEdit(). */
+  updateText(layer: Layer, props: TextProps): void {
+    this.beginTextEdit(layer);
+    layer.text = props;
+    void this.renderTextLayer(layer);
+  }
+
+  /** One undo step from `before` to the layer's current text (null = rasterized). */
+  commitText(layer: Layer, before: TextProps | null, label = 'Edit text'): void {
+    const after = layer.text ? structuredClone(layer.text) : null;
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
+    const apply = (t: TextProps | null) => {
+      layer.text = t ? structuredClone(t) : null;
+      if (t) void this.renderTextLayer(layer);
+      this.changed();
+    };
+    this.pushCommand(label, () => apply(after), () => apply(before));
+  }
+
+  addTextLayer(props: TextProps): Layer {
+    const layer = this.doc.createLayer(textLayerName(props));
+    layer.text = props;
+    this.addNode(layer, 'Add text');
+    void this.renderTextLayer(layer);
+    return layer;
+  }
+
+  /** Turn a text or frame layer into ordinary pixels. */
+  rasterize(layer: Layer): void {
+    if (layer.text) {
+      const before = structuredClone(layer.text);
+      layer.text = null;
+      this.commitText(layer, before, 'Rasterize text');
+    } else if (layer.frames) {
+      const before = layer.frames;
+      layer.frames = null;
+      this.pushCommand('Rasterize frames', () => (layer.frames = null), () => (layer.frames = before));
+    }
+    this.changed();
+  }
+
+  renderFrameLayer(layer: Layer): void {
+    if (!layer.frames) return;
+    layer.surface.clear();
+    this.uploadStraight(layer.surface, renderFrames(layer.frames, this.doc.width, this.doc.height), 0, 0);
+    layer.touch();
+    this.invalidate();
+  }
+
+  /** Replace a frame layer's frames as one undo step. */
+  setFrames(layer: Layer, frames: FrameSet, label = 'Frames'): void {
+    const before = layer.frames ? structuredClone(layer.frames) : null;
+    const after = structuredClone(frames);
+    const apply = (f: FrameSet | null) => {
+      layer.frames = f ? structuredClone(f) : null;
+      if (f) this.renderFrameLayer(layer);
+      this.changed();
+    };
+    apply(after);
+    this.pushCommand(label, () => apply(after), () => apply(before));
+  }
+
+  /** A frame layer on top of everything. */
+  addFrameLayer(frames: FrameSet): Layer {
+    const layer = this.doc.createLayer('Frames');
+    layer.frames = structuredClone(frames);
+    this.renderFrameLayer(layer);
+    this.addNode(layer, 'Add frames', { parent: this.doc.root, index: this.doc.root.children.length });
+    return layer;
+  }
+
+  /** Tile a pattern over the selection (or the whole canvas) on a layer, as one undo step. */
+  fillPattern(layer: Layer, tile: ImageData, label: string): void {
+    const R = this.doc.selection?.bounds ?? this.canvasRect();
+    const t = new Surface(this.gl, tile.width, tile.height, 'rgba', 'linear', 'repeat');
+    this.uploadStraight(t, tile, 0, 0);
+    const p = this.progs.pattern.use();
+    this.strokeBuffer.target(R.x, R.y, R.w, R.h);
+    p.tex('u_tile', 0, t.tex).v2('u_tileSize', tile.width, tile.height);
+    drawFullscreen(this.gl);
+    t.dispose();
+    const entry = this.beginPixels(label);
+    entry.capture(layer, R);
+    this.mergeStroke(layer, R, 1, 0);
+    this.strokeBuffer.clear(R.x, R.y, R.w, R.h);
+    this.invalidate(R);
+    this.history.push(entry);
+  }
+
+  /** Paint straight-alpha pixels onto a layer (through the selection) as one undo step. */
+  paintImage(layer: Layer, img: ImageData, x: number, y: number, label: string): void {
+    const r = this.clampRect({ x, y, w: img.width, h: img.height });
+    if (!r) return;
+    this.uploadStraight(this.strokeBuffer, img, x, y);
+    const entry = this.beginPixels(label);
+    entry.capture(layer, r);
+    this.mergeStroke(layer, r, 1, 0);
+    this.strokeBuffer.clear(r.x, r.y, r.w, r.h);
+    this.invalidate(r);
+    this.history.push(entry);
   }
 
   setBackground(bg: Partial<Doc['background']>): void {
@@ -1130,7 +1300,15 @@ function disposeNode(n: Node): void {
 
 function pickProps(n: Node) {
   const base = { visible: n.visible, opacity: n.opacity, blendMode: n.blendMode, locked: n.locked, clipping: n.clipping };
-  return n.kind === 'layer' ? { ...base, alphaLock: n.alphaLock, isReference: false } : base;
+  if (n.kind === 'folder') return base;
+  return {
+    ...base,
+    alphaLock: n.alphaLock,
+    isReference: false,
+    text: n.text ? structuredClone(n.text) : null,
+    frames: n.frames ? structuredClone(n.frames) : null,
+    tone: n.tone ? { ...n.tone } : null,
+  };
 }
 
 function nextName(doc: Doc, base: string): string {

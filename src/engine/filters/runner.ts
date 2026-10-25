@@ -146,6 +146,8 @@ export class FilterRun {
     readonly R: Rect,
     readonly docW: number,
     readonly docH: number,
+    /** Document resolution, for print-based sizes (screentone LPI). */
+    readonly dpi: number,
     /** Current brush color, 0..1. */
     readonly fg: [number, number, number],
   ) {}

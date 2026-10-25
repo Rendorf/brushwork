@@ -7,6 +7,65 @@ const seed = { key: 'seed', label: 'Variation', type: 'range' as const, min: 0, 
 
 export const GENERATE: FilterDef[] = [
   {
+    id: 'screentone',
+    name: 'Screentone (flat)',
+    category: 'Generate',
+    generator: true,
+    params: [
+      { key: 'density', label: 'Density', type: 'range', min: 1, max: 100, step: 1, default: 20, unit: '%' },
+      { key: 'lpi', label: 'Lines per inch', type: 'range', min: 10, max: 150, step: 1, default: 60 },
+      angle(45),
+      {
+        key: 'shape',
+        label: 'Pattern',
+        type: 'select',
+        default: 'dot',
+        options: [
+          { value: 'dot', label: 'Dots' },
+          { value: 'line', label: 'Lines' },
+          { value: 'cross', label: 'Cross' },
+          { value: 'noise', label: 'Noise' },
+        ],
+      },
+      { ...color, default: '#000000' },
+    ],
+    run: (r, v) => {
+      const a = (num(v, 'angle') * Math.PI) / 180;
+      return r.pass(
+        'screentone',
+        `uniform vec3 u_col; uniform float u_ink; uniform float u_cell; uniform vec2 u_rot; uniform int u_shape;
+         void main() {
+           vec2 dp = docPos();
+           vec2 rp = vec2(u_rot.x * dp.x + u_rot.y * dp.y, -u_rot.y * dp.x + u_rot.x * dp.y);
+           vec2 lp = (fract(rp / u_cell) - 0.5) * u_cell;
+           float cov;
+           if (u_shape == 0) {
+             vec2 q = rp / u_cell * 6.2831853;
+             float sv = 0.5 - (cos(q.x) + cos(q.y)) * 0.25;
+             float w = max(fwidth(sv), 1e-4);
+             cov = 1.0 - smoothstep(u_ink - w, u_ink + w, sv);
+           } else if (u_shape == 1) {
+             float hw = u_cell * 0.5 * u_ink;
+             cov = 1.0 - smoothstep(hw - 0.6, hw + 0.6, abs(lp.y));
+           } else if (u_shape == 2) {
+             float hw = u_cell * 0.5 * (1.0 - sqrt(1.0 - u_ink));
+             cov = 1.0 - smoothstep(hw - 0.6, hw + 0.6, min(abs(lp.x), abs(lp.y)));
+           } else {
+             cov = step(hash12(floor(dp)), u_ink);
+           }
+           o = vec4(u_col * cov, cov);
+         }`,
+        r.surface(),
+        {},
+        (p) => {
+          setColor(p, 'u_col', colorOf(r, v.color));
+          p.f('u_ink', num(v, 'density') / 100).f('u_cell', Math.max(2, r.dpi / num(v, 'lpi'))).v2('u_rot', Math.cos(a), Math.sin(a));
+          p.i('u_shape', ['dot', 'line', 'cross', 'noise'].indexOf(str(v, 'shape')));
+        },
+      );
+    },
+  },
+  {
     id: 'clouds',
     name: 'Clouds',
     category: 'Generate',

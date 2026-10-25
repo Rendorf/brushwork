@@ -55,6 +55,24 @@ A free, offline painting app in the spirit of ibis Paint. It runs in the browser
 - **Distort:** wave, swirl, ripple, bulge/pinch. Filters with a center point let you tap the canvas to place it.
 - **Generate:** clouds, stripes, polka dots, checkerboard, grid lines, and manga speed lines (focus and parallel).
 
+## Phase 4: text and comics
+
+- **Text layers** stay editable (tap a text with the Text tool, T):
+  - Horizontal or vertical (tategaki) text. In vertical text, long-vowel marks and brackets are turned sideways, and small kana and punctuation are nudged into place.
+  - Settings: font, size, color, bold/italic, alignment, letter and line spacing, outline and rotation.
+  - Each editing session is one undo step. Rasterize a text layer to paint on it.
+- **Fonts:**
+  - 8 bundled open-license fonts, with Latin Extended (ə, ş, ğ…) and Cyrillic where available: Inter, Comic Neue, Bangers, Patrick Hand, Permanent Marker, Caveat, Pacifico, Merriweather.
+  - Device fonts, including Japanese Gothic/Mincho stacks.
+  - Import your own TTF/OTF/WOFF files.
+- **Speech balloons (W):** speech, rounded, thought (cloud), shout (spiky) and narration boxes. Drag to draw; move it, drag the tail tip or resize before it is placed. Outline width and fill/line colors can be set, and text can be added inside automatically.
+- **Frame divider (N):** create a frame layer, then drag across panels to cut them with an adjustable gap. Shift snaps the angle, and nearly straight cuts snap automatically. Tap a panel to select it and draw only inside. Border width and white or transparent gaps are adjustable.
+- **Screentones:**
+  - **Screentone layers:** turn on in layer properties. Gray paint is shown as dots, lines, cross-hatch or noise at a chosen LPI and angle. It is non-destructive: the layer keeps the gray paint.
+  - **Flat screentone:** a fill filter (Filters → Generate).
+- **Materials:** 16 seamless patterns drawn by the app, including Japanese seigaiha, asanoha and ichimatsu, plus bricks, honeycomb, scales, plaid, sakura and wood. Add your own pictures to "My materials". Tile any of them on a new layer or into a selection in any color and scale, or place a picture and transform it.
+- **Comic & manga page templates:** B5 and A4 manga pages, 4-koma, US comic book, splash page and Webtoon. Each comes with print size, 3 mm bleed, trim and safe-area guides, and a starting panel layout.
+
 ## Run it
 
 ```bash
@@ -97,7 +115,6 @@ src/ui/             React interface
 
 ## Roadmap
 
-- **Phase 4, text and comics:** text layers (horizontal or vertical, open-license fonts, imported fonts), speech balloons, a comic frame divider, screentones, materials, and manga page templates.
 - **Phase 5, time-lapse and extras:** record and export painting videos, and frame animation with onion skin.
 
 ibis Paint's name and its own brush, material and font libraries are not used. Brushwork ships its own presets, generated textures and open-license assets.

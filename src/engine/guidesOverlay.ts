@@ -30,6 +30,33 @@ export function drawGuides(ctx: CanvasRenderingContext2D, g: Guides, v: Viewport
     ctx.lineTo(s.x + (dx / l) * far, s.y + (dy / l) * far);
   };
 
+  if (g.page && g.pageOn !== false) {
+    const quad = (r: { x: number; y: number; w: number; h: number }) => {
+      const pts = [S({ x: r.x, y: r.y }), S({ x: r.x + r.w, y: r.y }), S({ x: r.x + r.w, y: r.y + r.h }), S({ x: r.x, y: r.y + r.h })];
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.closePath();
+    };
+    // Shade the bleed (outside the trim line).
+    ctx.beginPath();
+    quad({ x: 0, y: 0, w: docW, h: docH });
+    quad(g.page.trim);
+    ctx.fillStyle = 'rgba(255, 70, 70, 0.10)';
+    ctx.fill('evenodd');
+    ctx.beginPath();
+    quad(g.page.trim);
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(255, 70, 70, 0.85)';
+    ctx.stroke();
+    if (g.page.safe) {
+      ctx.beginPath();
+      quad(g.page.safe);
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(0, 170, 255, 0.85)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
   if (g.gridOn && g.gridSize > 0 && g.gridSize * v.zoom >= 6) {
     ctx.beginPath();
     for (let x = g.gridSize; x < docW; x += g.gridSize) {

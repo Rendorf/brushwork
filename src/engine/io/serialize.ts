@@ -2,7 +2,10 @@
 import type { BlendMode, FolderBlendMode } from '../blendModes';
 import { Doc, Folder, Layer, Selection, type Node } from '../document';
 import { Surface, type GL } from '../gl/gl';
+import type { FrameSet } from '../comics/frames';
+import type { ToneProps } from '../comics/tone';
 import { defaultGuides, type Guides } from '../guides';
+import type { TextProps } from '../text/textRender';
 
 export interface NodeJSON {
   kind: 'layer' | 'folder';
@@ -17,6 +20,9 @@ export interface NodeJSON {
   isReference?: boolean;
   expanded?: boolean;
   children?: NodeJSON[];
+  text?: TextProps | null;
+  frames?: FrameSet | null;
+  tone?: ToneProps | null;
 }
 
 export interface DocJSON {
@@ -43,7 +49,7 @@ export function docToJSON(doc: Doc): DocJSON {
       locked: n.locked,
       clipping: n.clipping,
     };
-    if (n.kind === 'layer') return { ...base, alphaLock: n.alphaLock, isReference: n.isReference };
+    if (n.kind === 'layer') return { ...base, alphaLock: n.alphaLock, isReference: n.isReference, text: n.text, frames: n.frames, tone: n.tone };
     return { ...base, expanded: n.expanded, children: n.children.map(node) };
   };
   return {
@@ -78,6 +84,9 @@ export async function docFromJSON(gl: GL, j: DocJSON, pixels: (id: string) => Pr
       const l = new Layer(s, n.name);
       l.alphaLock = !!n.alphaLock;
       l.isReference = !!n.isReference;
+      l.text = n.text ?? null;
+      l.frames = n.frames ?? null;
+      l.tone = n.tone ?? null;
       l.blendMode = n.blendMode as BlendMode;
       node = l;
     } else {

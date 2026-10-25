@@ -1447,3 +1447,81 @@ kbd {
   width: 100%;
   margin: 6px 0;
 }
+
+/* ------------------------------------------------------------------ phase 4 */
+
+.text-panel {
+  width: min(360px, calc(100vw - 16px));
+}
+.text-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.font-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.font-select select {
+  max-width: 200px;
+}
+.tool-options .field {
+  margin: 0;
+  flex: none;
+}
+.opt-hint {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.stop-color.small {
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+.material-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+}
+.material-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  text-align: center;
+}
+.material-item.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.material-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  background: #fff;
+}
+.materials-panel .filter-actions {
+  flex-wrap: wrap;
+}
+.tone-props {
+  margin: 6px 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}

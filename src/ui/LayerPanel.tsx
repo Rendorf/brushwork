@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { BLEND_MODES, blendLabel, type FolderBlendMode } from '../engine/blendModes';
 import type { Folder, Layer, Node } from '../engine/document';
 import type { Editor } from '../engine/editor';
-import { capture, Icon, IconButton, Panel, Slider } from './components';
+import { defaultTone, toneCell, type ToneProps } from '../engine/comics/tone';
+import { capture, Icon, IconButton, Panel, Segmented, Slider, Toggle } from './components';
 import { useEditor } from './hooks';
 import { rgbToHex, hexToRgb } from '../store/settings';
 
@@ -143,6 +144,9 @@ export function LayerPanel({ onClose }: { onClose: () => void }) {
                   {n.locked && <Icon name="lock" size={14} />}
                   {n.kind === 'layer' && n.alphaLock && <Icon name="alphaLock" size={14} />}
                   {n.kind === 'layer' && n.isReference && <Icon name="star" size={14} />}
+                  {n.kind === 'layer' && n.text && <Icon name="text" size={14} />}
+                  {n.kind === 'layer' && n.frames && <Icon name="frame" size={14} />}
+                  {n.kind === 'layer' && n.tone && <Icon name="tone" size={14} />}
                 </div>
                 <span
                   className="drag-handle"
@@ -283,6 +287,12 @@ function LayerProps({ node }: { node: Node }) {
           </button>
         )}
       </div>
+      {isLayer && <TonePanel layer={node as Layer} />}
+      {isLayer && ((node as Layer).text || (node as Layer).frames) && (
+        <button className="chip" onClick={() => ed.rasterize(node as Layer)} title="Turn into ordinary pixels you can paint on">
+          Rasterize {(node as Layer).text ? 'text' : 'frames'}
+        </button>
+      )}
       <div className="prop-actions">
         <IconButton icon="back" label="Move up" className="rot90" onClick={() => move(1)} size={18} />
         <IconButton icon="back" label="Move down" className="rot-90" onClick={() => move(-1)} size={18} />
@@ -292,6 +302,35 @@ function LayerProps({ node }: { node: Node }) {
         <IconButton icon="layers" label="Flatten image" onClick={() => confirm('Flatten all layers into one?') && ed.flatten()} size={18} />
         <IconButton icon="trash" label="Delete" onClick={() => ed.deleteNode(node)} size={18} />
       </div>
+    </div>
+  );
+}
+
+/** Screentone: show the layer's darkness as dots, lines or noise (non-destructive). */
+function TonePanel({ layer }: { layer: Layer }) {
+  const ed = useEditor();
+  const t = layer.tone;
+  const set = (tone: ToneProps | null, label = 'Screentone') => ed.setProps(layer, { tone }, { label });
+  return (
+    <div className="tone-props">
+      <Toggle label="Screentone layer" value={!!t} onChange={(on) => set(on ? defaultTone() : null)} />
+      {t && (
+        <>
+          <Segmented
+            value={t.shape}
+            onChange={(shape) => set({ ...t, shape })}
+            options={[
+              { value: 'dot', label: 'Dots' },
+              { value: 'line', label: 'Lines' },
+              { value: 'cross', label: 'Cross' },
+              { value: 'noise', label: 'Noise' },
+            ]}
+          />
+          <Slider label="Lines per inch" value={t.lpi} min={10} max={150} step={1} onChange={(lpi) => ed.setProps(layer, { tone: { ...t, lpi } }, { record: false })} onCommit={(lpi) => set({ ...t, lpi }, 'Tone LPI')} />
+          <Slider label="Angle" value={t.angle} min={0} max={90} step={1} format={(v) => `${Math.round(v)}°`} onChange={(angle) => ed.setProps(layer, { tone: { ...t, angle } }, { record: false })} onCommit={(angle) => set({ ...t, angle }, 'Tone angle')} />
+          <p className="hint">Paint in gray: darker paint becomes denser tone. Cell size {toneCell(t, ed.doc.dpi).toFixed(1)}px at {ed.doc.dpi} dpi.</p>
+        </>
+      )}
     </div>
   );
 }

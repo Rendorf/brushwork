@@ -17,7 +17,10 @@ export type ToolId =
   | 'hand'
   | 'ruler'
   | 'shape'
-  | 'gradient';
+  | 'gradient'
+  | 'text'
+  | 'balloon'
+  | 'frame';
 
 export type BrushToolId = 'brush' | 'eraser' | 'smudge' | 'blur';
 
@@ -33,6 +36,7 @@ export interface BrushToolState {
 
 export type FillSource = 'layer' | 'canvas' | 'reference';
 export type ShapeKind = 'line' | 'rect' | 'ellipse' | 'polygon' | 'star';
+export type BalloonKind = 'oval' | 'round' | 'cloud' | 'spiky' | 'box';
 export type GradientType = 'linear' | 'radial' | 'conic' | 'reflected';
 
 /** A gradient color stop. color 'fg' means the current color. */
@@ -69,6 +73,10 @@ export interface Settings {
   gradient: { type: GradientType; stops: GradientStop[]; reverse: boolean; opacity: number };
   /** Floating reference window: position (CSS px), what it shows, and which image. */
   refWindow: { open: boolean; x: number; y: number; w: number; h: number; source: 'image' | 'canvas'; current: string | null };
+  textDefaults: { font: string; size: number; vertical: boolean; bold: boolean; strokeWidth: number };
+  balloon: { kind: BalloonKind; stroke: number; fill: string; line: string; addText: boolean };
+  frame: { border: number; gutter: number; margin: number; mode: 'cut' | 'select' };
+  materials: { scale: number; color: 'fg' | 'black' | 'original' };
   /** Last-used values per filter id, and recently used filter ids. */
   filterValues: Record<string, Record<string, unknown>>;
   recentFilters: string[];
@@ -115,6 +123,10 @@ const DEFAULTS: Settings = {
     opacity: 1,
   },
   refWindow: { open: false, x: 70, y: 110, w: 280, h: 280, source: 'image', current: null },
+  textDefaults: { font: 'inter', size: 64, vertical: false, bold: false, strokeWidth: 0 },
+  balloon: { kind: 'oval', stroke: 6, fill: '#ffffff', line: '#000000', addText: true },
+  frame: { border: 8, gutter: 40, margin: 120, mode: 'cut' },
+  materials: { scale: 100, color: 'fg' },
   filterValues: {},
   recentFilters: [],
   customBrushes: [],
@@ -136,6 +148,10 @@ export const settingsStore = createStore<Settings>()(
         shape: { ...current.shape, ...(p.shape ?? {}) },
         gradient: { ...current.gradient, ...(p.gradient ?? {}) },
         refWindow: { ...current.refWindow, ...(p.refWindow ?? {}) },
+        textDefaults: { ...current.textDefaults, ...(p.textDefaults ?? {}) },
+        balloon: { ...current.balloon, ...(p.balloon ?? {}) },
+        frame: { ...current.frame, ...(p.frame ?? {}) },
+        materials: { ...current.materials, ...(p.materials ?? {}) },
       };
     },
   }),

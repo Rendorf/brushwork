@@ -99,7 +99,7 @@ export class FilterSession {
     const { cache } = progsFor(ed);
     const src = new Surface(ed.gl, R.w, R.h);
     this.layer.surface.blitTo(src, R.x, R.y, R.w, R.h, 0, 0);
-    const run = new FilterRun(ed.gl, cache, src, R, ed.doc.width, ed.doc.height, currentRGB());
+    const run = new FilterRun(ed.gl, cache, src, R, ed.doc.width, ed.doc.height, ed.doc.dpi, currentRGB());
     let res: Surface;
     try {
       res = this.def.run(run, this.values);
